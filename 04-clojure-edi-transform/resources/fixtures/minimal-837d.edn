@@ -1,0 +1,15 @@
+(:type :dental-claim-transaction
+ :control-number "0001"
+ :segments
+ ((:id "ST"  :elements ("837" "0001" "005010X224A2"))
+  (:id "BHT" :elements ("0019" "00" "REF12345" "20240601" "1200" "CH"))
+  (:id "NM1" :elements ("41" "2" "ACME DENTAL" nil nil nil nil "46" "123456789"))
+  (:id "NM1" :elements ("40" "2" "PAYER NAME" nil nil nil nil "46" "987654321"))
+  (:id "HL"  :elements ("1" nil "20" "1"))
+  (:id "NM1" :elements ("85" "2" "ACME DENTAL" nil nil nil nil "XX" "1234567890"))
+  (:id "HL"  :elements ("2" "1" "22" "0"))
+  (:id "NM1" :elements ("IL" "1" "DOE" "JANE" nil nil nil "MI" "M00112233"))
+  (:id "CLM" :elements ("PCN001" "250.00" nil nil "11"))
+  (:id "SV3" :elements ("AD:D1110" "250.00" nil nil "1"))
+  (:id "DTP" :elements ("472" "D8" "20240515"))
+  (:id "SE"  :elements ("12" "0001"))))

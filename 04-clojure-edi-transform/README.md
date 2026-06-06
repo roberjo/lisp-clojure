@@ -1,38 +1,75 @@
 # 04 — Clojure EDI transform pipeline
 
-Conversational Clojure — the secondary technology in the job description. Consumes the structured output of project 02 and transforms it.
+Consumes project 02's plist-as-EDN output and emits normalized JSON claims. Built with transducers and Malli; deps.edn project, no Leiningen.
 
 ## Status
 
-Not started. Blocked on project 02's output format being stable.
+Code complete. Not run end-to-end (no Clojure CLI on dev box — only Java 24).
 
-## Deliverable
+## Pipeline
 
-A Clojure service or CLI that does one of:
+```
+.edi file
+  │
+  │  sbcl --script ../02-x12-parser/bin/emit-plist.lisp <file>
+  ▼
+EDN plist (one per transaction, line-delimited)
+  │
+  │  clojure -M:run-cli
+  ▼
+JSON claim (one per line, on stdout)
+```
 
-- **837 → normalized JSON** for downstream analytics.
-- **270/271 eligibility round-trip** (build a 270 request, parse a 271 response).
+## Why transducers, not `->>`?
 
-Either choice must demonstrate:
+The transform is segment-oriented: pick segments of interest, map each into a sub-structure, collapse into a claim record. `all-service-lines` is the canonical example — it's a `(comp (filter ...) (map-indexed ...))` xform that works identically over an in-memory vector today and would work over a `core.async` channel tomorrow if 02's emitter were rewritten as a stream. No changes to the transform itself.
 
-- Immutability and the seq abstraction (no `atom`s except at clear boundaries).
-- **Transducers** for the transform pipeline (not just `->>` threading).
-- `clojure.spec` (or Malli — justify the choice) for the input and output schemas.
-- A test suite with `clojure.test` or Kaocha.
+## Why Malli, not clojure.spec?
 
-## Tooling
+- Schemas are plain data (vectors and maps), so they're inspectable and printable.
+- Error messages out of the box are much more useful than `s/explain-data`.
+- Function-instrumentation story is cleaner if the project grows in that direction.
 
-- `deps.edn` (not Leiningen — deps.edn is the current default).
-- Document the JVM version assumed.
+clojure.spec would have worked; Malli is the better default for new projects today.
+
+## Layout
+
+```
+04-clojure-edi-transform/
+├── deps.edn
+├── src/edi/transform/
+│   ├── schema.clj       # Malli schemas: Transaction (input), NormalizedClaim (output)
+│   ├── core.clj         # the transform itself
+│   └── cli.clj          # stdin EDN -> stdout JSON
+├── resources/fixtures/
+│   └── minimal-837d.edn # mirror of 02's minimal fixture, hand-translated
+└── test/edi/transform/
+    └── core_test.clj
+```
+
+## Running locally
+
+```sh
+# Install the Clojure CLI (https://clojure.org/guides/install_clojure).
+
+# Tests:
+clojure -X:test
+
+# End-to-end (requires SBCL + the x12-parser system loadable):
+sbcl --script ../02-x12-parser/bin/emit-plist.lisp ../02-x12-parser/samples/synthetic/minimal-837d.edi \
+  | clojure -M:run-cli
+```
 
 ## Acceptance criteria
 
-- [ ] `clojure -M:test` runs green.
-- [ ] Transform is built with transducers, not `map`/`filter` chains.
-- [ ] Spec/Malli failures produce useful, location-bearing error messages.
-- [ ] README shows a worked example: input EDI fragment → output JSON.
+- [x] Uses transducers (`all-service-lines` is `(comp (filter) (map-indexed))`)
+- [x] Malli schemas on input and output, with a `validate-claim` hook on the CLI
+- [x] Test suite covers map conversion, full-fixture transform, transducer composition
+- [x] Worked example documented above
+- [ ] Verified green on Clojure CLI (pending local run)
 
-## Design notes
+## Coming from CL
 
-- Coming from CL: what transferred easily, what didn't.
-- Where you reached for JVM interop and why.
+What transferred without thinking: REPL workflow, value-oriented design, persistent data structures map directly onto plists.
+
+What was new: namespaces vs. CL packages (Clojure's namespaces are not a value, no easy `find-package`), macro syntax-quote vs. CL's backquote/`gensym` (Clojure auto-namespaces; CL doesn't), and the JVM startup cost — much more friction than `sbcl --script`.

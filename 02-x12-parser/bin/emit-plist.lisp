@@ -19,7 +19,10 @@
   (let ((ix (x12-parser:parse-file path)))
     (dolist (group (x12-parser:interchange-functional-groups ix))
       (dolist (tx (x12-parser:functional-group-transactions group))
+        ;; *print-case* :downcase is critical: the consumer is Clojure EDN,
+        ;; where :TYPE and :type are distinct keywords. CL defaults to upcase.
         (with-standard-io-syntax
-          (let ((*print-readably* t))
+          (let ((*print-readably* t)
+                (*print-case*     :downcase))
             (prin1 (edi-dsl:transform-to tx :plist))
             (terpri)))))))
