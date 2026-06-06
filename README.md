@@ -6,6 +6,26 @@ A learning roadmap and project portfolio for qualifying as a **Senior Lisp Softw
 
 ---
 
+## Status
+
+All five projects are scaffolded with substantive implementations and tests. End-to-end runs are not yet verified (no SBCL / Clojure CLI / BaseX on the dev box used to produce this). Per-project READMEs document local-run instructions.
+
+| # | Project | Code | Tests | Run-verified |
+|---|---|---|---|---|
+| 01 | CL kvstore | ✅ | ✅ FiveAM suite | ⏳ pending local SBCL |
+| 02 | X12 837D parser | ✅ | ✅ FiveAM suite, 2 fixtures | ⏳ pending local SBCL |
+| 03 | Macros + CLOS DSL | ✅ | ✅ incl. macroexpand test | ⏳ pending local SBCL |
+| 04 | Clojure transform | ✅ | ✅ clojure.test | ⏳ pending local Clojure CLI |
+| 05 | XQuery docstore | ✅ docs/queries/loader | n/a (queries) | ⏳ pending local BaseX |
+
+**Cross-project pipeline (when toolchains are installed):**
+
+```
+.edi ─[02 emit-plist.lisp]─▶ EDN ─[04 cli.clj]─▶ JSON ─[05 from-json.py]─▶ XML ─[BaseX]─▶ XQuery results
+```
+
+---
+
 ## Why this repo exists
 
 The job's requirements break into two kinds of gaps:
