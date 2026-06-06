@@ -1,0 +1,19 @@
+# BaseX script. Run with:
+#   basex -c "RUN scripts/setup-indexes.bxs"
+# (or paste each line into the GUI's Database menu).
+
+CREATE DB claims
+OPEN claims
+
+# Element/attribute indexes for fast range/equality lookups.
+CREATE INDEX TEXT
+CREATE INDEX ATTRIBUTE
+CREATE INDEX TOKEN
+
+# Tune for read-heavy workload.
+SET INDEXSPLITSIZE 100000
+SET TEXTINDEX true
+SET ATTRINDEX true
+SET TOKENINDEX true
+
+INFO INDEX

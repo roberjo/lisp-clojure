@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<claim xmlns="urn:x12:837d">
+  <meta>
+    <transaction-type>dental</transaction-type>
+    <control-number>0001</control-number>
+    <interchange-control-number>000000001</interchange-control-number>
+    <received-at>2024-06-01T12:00:00Z</received-at>
+  </meta>
+  <billing-provider>
+    <name>ACME DENTAL</name>
+    <npi>1234567890</npi>
+  </billing-provider>
+  <subscriber>
+    <name>
+      <last>DOE</last>
+      <first>JANE</first>
+    </name>
+    <member-id qualifier="MI">M00112233</member-id>
+  </subscriber>
+  <claim-detail>
+    <claim-id>PCN001</claim-id>
+    <total-charge>250.00</total-charge>
+    <place-of-service>11</place-of-service>
+    <service-line number="1">
+      <procedure-code>D1110</procedure-code>
+      <charge>250.00</charge>
+      <service-date>2024-05-15</service-date>
+      <units>1</units>
+    </service-line>
+  </claim-detail>
+</claim>

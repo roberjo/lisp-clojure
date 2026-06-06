@@ -1,38 +1,68 @@
-# 05 — Document-store modeling (MarkLogic or equivalent)
+# 05 — Document-store modeling (BaseX-targeted)
 
-Why a document database fits document-centric EDI, and basic competence with the model.
+Document design and XQuery for storing X12 dental claims as XML. Targets BaseX (Apache-licensed, open source) for runnable demonstration; the data model and queries port to MarkLogic with adjustments only to admin APIs.
 
 ## Status
 
-Not started.
+Documents, queries, and loader scripts complete. Not run against a live BaseX (not installed on dev box).
 
-## Open question — pick a backend
+## Why this backend
 
-MarkLogic Community Edition is no longer freely available the way it once was. Three workable paths:
+MarkLogic Community Edition's distribution model has tightened; BaseX gives the same XQuery 3.1 semantics with a single jar that anyone can clone and run. The interview talking point: "data model and queries are MarkLogic-compatible; I built on an OSS XQuery engine for portability."
 
-1. **MarkLogic Developer License** — free for development, requires registration. Most directly aligns with the job's stated stack.
-2. **BaseX** — Apache-licensed, native XQuery/XPath, runs anywhere. Closest open-source analogue; skills transfer.
-3. **eXist-db** — LGPL, XQuery-native, mature.
+Full reasoning and per-feature mapping in `docs/design.md`.
 
-Decide and document the choice in this README. If you go with BaseX/eXist-db, the interview talking point is: "I built it on an open-source XQuery engine because licensing; the data model and queries port directly to MarkLogic."
+## Layout
 
-## Deliverable
+```
+05-marklogic-docstore/
+├── docs/design.md           # schema, granularity, index choices
+├── documents/               # sample claim XML (3 synthetic claims)
+├── queries/
+│   ├── eligibility-lookup.xqy
+│   ├── claim-status.xqy
+│   └── claims-by-payer-range.xqy
+└── scripts/
+    ├── setup-indexes.bxs    # BaseX index setup
+    ├── load.sh              # bulk-load documents/ into the "claims" DB
+    └── from-json.py         # convert project 04's JSON output to XML
+```
 
-- Schema/document design for storing EDI transactions as XML (and/or JSON).
-- A set of XQuery / XPath queries covering realistic operations:
-  - Eligibility lookup by member id.
-  - Claim status by claim id.
-  - Aggregate: claim counts by payer, by date range.
-- Notes on indexing (range indexes, path indexes, element-value indexes).
-- A loader script that ingests output from project 02 or 04.
+## End-to-end (with all toolchains installed)
+
+```sh
+# 1. Generate JSON claims from EDI
+sbcl --script ../02-x12-parser/bin/emit-plist.lisp ../02-x12-parser/samples/synthetic/minimal-837d.edi \
+  | clojure -M:run-cli \
+  > /tmp/claims.jsonl
+
+# 2. Convert JSON to XML docs
+python3 scripts/from-json.py --multi < /tmp/claims.jsonl > documents/from-pipeline.xml
+
+# 3. Load into BaseX
+basex -c "RUN scripts/setup-indexes.bxs"
+sh scripts/load.sh
+
+# 4. Run a query
+basex -i documents -q queries/eligibility-lookup.xqy -b "member-id=M00112233"
+```
+
+## Queries
+
+| File | Purpose |
+|---|---|
+| `eligibility-lookup.xqy` | All claims for a given member id, sorted by recency. |
+| `claim-status.xqy` | Fetch a single claim by provider-issued id (CLM01). |
+| `claims-by-payer-range.xqy` | Aggregate claim counts and total billed per provider in a date range. |
+
+Each query declares its external parameters at the top so it can be invoked from the BaseX CLI with `-b name=value`.
 
 ## Acceptance criteria
 
-- [ ] Document design diagram (or a representative XML fixture) committed.
-- [ ] Queries are in `.xqy` files, runnable against the chosen backend.
-- [ ] README explains why a doc store beats a relational schema for X12.
-
-## Design notes
-
-- Index choices and what queries they enable.
-- How envelope/transaction nesting maps to documents (one doc per transaction? per interchange?).
+- [x] Schema design committed (`docs/design.md`).
+- [x] Sample XML documents committed (synthetic, fake PHI).
+- [x] Eligibility / claim-status / aggregate queries (`.xqy`, runnable).
+- [x] Loader script + index setup script.
+- [x] README explains why a doc store beats relational for X12.
+- [x] Bridges to project 04's output (`from-json.py`).
+- [ ] Verified against a live BaseX (pending local install).
