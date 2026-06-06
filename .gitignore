@@ -80,3 +80,6 @@ samples/*.x12
 samples/private/
 !samples/synthetic/
 !samples/synthetic/**
+
+# deps.clj first-run cache
+clojure-tools.zip
