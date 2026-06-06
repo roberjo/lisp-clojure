@@ -1,0 +1,79 @@
+# Common Lisp
+*.fasl
+*.fas
+*.lx32fsl
+*.lx64fsl
+*.dx32fsl
+*.dx64fsl
+*.wx32fsl
+*.wx64fsl
+*.fx32fsl
+*.fx64fsl
+*.sx32fsl
+*.sx64fsl
+*.ppcf
+*.ufsl
+*.64ufsl
+*.d64fsl
+*.p64fsl
+*.lib
+*.dfsl
+*.pfsl
+*.bfsl
+*.fsl
+*.lisp-temp
+*.abcl
+*.jar
+.slime-history.eld
+.swank.lisp
+~/.cache/common-lisp/
+
+# Clojure
+target/
+classes/
+checkouts/
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+.lein-*
+.nrepl-port
+.nrepl-history
+.cpcache/
+.shadow-cljs/
+.clj-kondo/
+.lsp/
+
+# Java
+*.class
+hs_err_pid*
+
+# Editors
+.idea/
+*.iml
+.vscode/
+.cursor/
+*.swp
+*.swo
+.#*
+\#*\#
+.dir-locals.el
+.projectile
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local config
+.env
+.env.local
+*.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Sample EDI data (often contains PHI — never commit real claims)
+samples/*.edi
+samples/*.x12
+samples/private/
