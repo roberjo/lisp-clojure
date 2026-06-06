@@ -48,6 +48,32 @@ HIPAA-mandated version for most transactions today is **5010** (some transaction
 - Washington Publishing Company hosts the implementation guides (the authoritative spec PDFs — not free).
 - Public clearinghouse sandbox documentation often includes annotated samples.
 
-## Gotchas to capture as you encounter them
+## Gotchas surfaced while building this repo
 
-- (Add notes here as you hit them — segment-ordering quirks, optional-but-required-by-companion-guide elements, etc.)
+### Repetition separator vs. segment terminator must differ
+
+ISA11 is the repetition separator. ISA105 is the segment terminator. The X12 spec requires all delimiters (element, sub-element, repetition, segment) to be **mutually distinct characters**. If they collide, a naive line-by-line splitter splits the ISA segment itself — the parser breaks before it ever reaches the real data.
+
+The first version of the custom-delimiters fixture in this repo used `^` for both, which is invalid. See the commit history for `02-x12-parser/samples/synthetic/custom-delimiters-837d.edi`.
+
+### `parse-error` collides with `cl:parse-error`
+
+When naming conditions in SBCL, beware that `cl:parse-error` is a standard symbol and SBCL applies package locks. A `(define-condition parse-error ...)` in your package will be rejected. Use a domain prefix: `x12-parse-error`.
+
+### CL keyword case → Clojure EDN mismatch
+
+CL's reader/printer defaults to uppercase symbols. CL's `:type` prints as `:TYPE`. EDN is case-sensitive, so the Clojure reader sees `:TYPE` as a different keyword from `:type`. When emitting plists for Clojure consumption, bind `*print-case*` to `:downcase`.
+
+### Class names leak their package when printed
+
+`(prin1 (class-name (class-of obj)))` prints `MY-PKG:DENTAL-CLAIM-TRANSACTION` including the package prefix. For cross-language consumption, intern the symbol name into the keyword package (`:dental-claim-transaction`) before emitting.
+
+### XML namespace silence
+
+A BaseX query against a doc with the wrong namespace returns empty — silently. No error. A production loader should assert post-`ADD` that the document is reachable via the expected namespace prefix.
+
+### Add more here as encountered
+
+- (Segment-ordering quirks specific to 837D loops 2010, 2300, 2400, etc.)
+- (Companion-guide rules that mark optional elements as required for specific payers.)
+- (5010 vs. 5010A1/A2 addenda differences.)

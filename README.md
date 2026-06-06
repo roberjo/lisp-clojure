@@ -33,6 +33,27 @@ Run everything: `make test` (or `./test-all.ps1` on Windows). Run the pipeline: 
 
 ---
 
+## Quick links
+
+**Get started:**
+- [docs/local-dev-setup.md](docs/local-dev-setup.md) — install the toolchain (Windows / macOS / Linux)
+- [docs/onboarding.md](docs/onboarding.md) — guided first week
+- [CONTRIBUTING.md](CONTRIBUTING.md) — workflow, commit style, conventions
+
+**Understand the design:**
+- [docs/architecture.md](docs/architecture.md) — system view, seams, key decisions, failure modes
+- [docs/x12-primer.md](docs/x12-primer.md) — EDI domain background + gotchas surfaced building this
+
+**Operational thinking** (portfolio-scoped; nothing deployed):
+- [docs/deployment.md](docs/deployment.md) — what production would look like
+- [docs/monitoring.md](docs/monitoring.md) — observability story
+
+**Career-facing:**
+- [docs/learning-plan.md](docs/learning-plan.md) — the 6-month plan + what's done
+- [docs/interview-prep.md](docs/interview-prep.md) — talking points mapped to artifacts
+
+---
+
 ## Why this repo exists
 
 The job's requirements break into two kinds of gaps:
@@ -49,15 +70,23 @@ Each project below is a directory in this repo with its own README, tests, and a
 ```
 lisp-edi-portfolio/
 ├── README.md                      # this file
-├── 01-cl-foundations/             # REPL-driven CL fundamentals
-├── 02-x12-parser/                 # FLAGSHIP: Common Lisp X12 837/835 parser
-├── 03-cl-macros-clos/             # macros + CLOS abstraction showcase
+├── CONTRIBUTING.md                # workflow, commit style
+├── Makefile                       # `make test`, `make e2e`
+├── test-all.ps1                   # Windows equivalent
+├── 01-cl-foundations/             # REPL-driven CL fundamentals (kvstore)
+├── 02-x12-parser/                 # FLAGSHIP: Common Lisp X12 837D parser
+├── 03-cl-macros-clos/             # macros + CLOS abstraction (used by 02)
 ├── 04-clojure-edi-transform/      # Clojure pipeline transforming parsed EDI
-├── 05-marklogic-docstore/         # document-store modeling + XQuery
+├── 05-marklogic-docstore/         # BaseX/XQuery doc-store modeling
 └── docs/
-    ├── learning-plan.md           # the month-by-month plan (below)
-    ├── x12-primer.md              # EDI/X12 domain notes
-    └── interview-prep.md          # talking points mapped to requirements
+    ├── architecture.md            # technical deep dive
+    ├── local-dev-setup.md         # per-OS install + verification
+    ├── onboarding.md              # guided first week for a new dev
+    ├── deployment.md              # operational design (if productionized)
+    ├── monitoring.md              # observability story
+    ├── learning-plan.md           # the month-by-month plan
+    ├── x12-primer.md              # EDI/X12 domain notes + gotchas
+    └── interview-prep.md          # talking points mapped to artifacts
 ```
 
 ---
