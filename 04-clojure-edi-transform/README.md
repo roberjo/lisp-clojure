@@ -4,7 +4,7 @@ Consumes project 02's plist-as-EDN output and emits normalized JSON claims. Buil
 
 ## Status
 
-Code complete. Not run end-to-end (no Clojure CLI on dev box — only Java 24).
+Green on Clojure 1.12 (deps.clj 1.12.5) + Java 24. 4 tests, 21 assertions. End-to-end EDI → JSON pipeline verified.
 
 ## Pipeline
 
@@ -66,7 +66,7 @@ sbcl --script ../02-x12-parser/bin/emit-plist.lisp ../02-x12-parser/samples/synt
 - [x] Malli schemas on input and output, with a `validate-claim` hook on the CLI
 - [x] Test suite covers map conversion, full-fixture transform, transducer composition
 - [x] Worked example documented above
-- [ ] Verified green on Clojure CLI (pending local run)
+- [x] Verified green on Clojure 1.12 via deps.clj
 
 ## Coming from CL
 

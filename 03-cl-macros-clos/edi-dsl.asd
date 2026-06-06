@@ -18,9 +18,9 @@
   :components ((:module "tests"
                 :serial t
                 :components ((:file "package")
+                             (:file "suite")
                              (:file "segment-tests")
-                             (:file "transaction-tests")
-                             (:file "suite"))))
+                             (:file "transaction-tests"))))
   :perform (test-op (op c)
              (uiop:symbol-call :fiveam :run!
                                (uiop:find-symbol* :all-tests :edi-dsl/tests))))

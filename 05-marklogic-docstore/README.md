@@ -4,7 +4,7 @@ Document design and XQuery for storing X12 dental claims as XML. Targets BaseX (
 
 ## Status
 
-Documents, queries, and loader scripts complete. Not run against a live BaseX (not installed on dev box).
+Verified against BaseX 12.0: documents load, eligibility / claim-status / aggregate queries return expected results. End-to-end JSON → XML bridge from project 04 verified.
 
 ## Why this backend
 
@@ -65,4 +65,4 @@ Each query declares its external parameters at the top so it can be invoked from
 - [x] Loader script + index setup script.
 - [x] README explains why a doc store beats relational for X12.
 - [x] Bridges to project 04's output (`from-json.py`).
-- [ ] Verified against a live BaseX (pending local install).
+- [x] Verified against BaseX 12.0.

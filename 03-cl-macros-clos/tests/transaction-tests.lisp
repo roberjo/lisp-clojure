@@ -1,6 +1,5 @@
 (in-package #:edi-dsl/tests)
 
-(def-suite transaction-suite :description "CLOS hierarchy + APPEND-combined VALIDATE.")
 (in-suite transaction-suite)
 
 ;;; Define a couple of segments the tests can rely on.
@@ -58,6 +57,5 @@
                             :control-number "0001"
                             :segments '(("CLM" "C1" "10.00"))))
          (pl (transform-to tx :plist)))
-    (is (eq :dental-claim-transaction
-            (intern (symbol-name (getf pl :type)) :keyword)))
+    (is (eq :dental-claim-transaction (getf pl :type)))
     (is (equal "0001" (getf pl :control-number)))))

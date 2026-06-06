@@ -4,7 +4,7 @@ A minimal key-value store with in-memory and file-backed backends. The point isn
 
 ## Status
 
-Code complete. **Not run** — no SBCL on the dev machine. Verify locally with the commands below.
+Green on SBCL 2.6.5 + FiveAM (8 tests, 11 assertions).
 
 ## Layout
 
@@ -54,4 +54,4 @@ Or in SLIME / Alive:
 - [x] Package discipline (`:use #:cl` only; no `:cl-user` leakage)
 - [x] FiveAM test suite covering both backends
 - [x] Headless runner exits 0/1 for CI
-- [ ] Verified green on SBCL (pending local run)
+- [x] Verified green on SBCL 2.6.5

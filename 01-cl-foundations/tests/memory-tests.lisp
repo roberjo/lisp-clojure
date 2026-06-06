@@ -1,6 +1,5 @@
 (in-package #:kvstore/tests)
 
-(def-suite memory-suite :description "In-memory backend tests.")
 (in-suite memory-suite)
 
 (test put-then-get

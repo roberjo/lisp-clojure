@@ -4,7 +4,7 @@ A `define-segment` DSL that declares X12 segment structure at compile time, plus
 
 ## Status
 
-Code complete. Not run end-to-end (no SBCL on dev box).
+Green on SBCL 2.6.5 + FiveAM (9 tests, 20 assertions).
 
 ## What's here
 
@@ -54,4 +54,4 @@ sbcl --non-interactive --load run-tests.lisp
 - [x] `(macroexpand-1 '(define-segment ...))` produces readable, hygienic code (test covers this).
 - [x] CLOS hierarchy used by project 02 (segment definitions imported there).
 - [x] Tests cover macro expansion AND generated/runtime behavior.
-- [ ] Verified green on SBCL (pending local run).
+- [x] Verified green on SBCL 2.6.5.

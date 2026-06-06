@@ -1,6 +1,5 @@
 (in-package #:x12-parser/tests)
 
-(def-suite delimiters-suite :description "Delimiter detection from the ISA segment.")
 (in-suite delimiters-suite)
 
 (test detects-default-delimiters
@@ -11,4 +10,4 @@
     (is (char= #\~ (x12-parser::delimiters-segment d)))))
 
 (test rejects-non-isa-input
-  (signals parse-error (detect-delimiters "GS*HC*X*Y*20240601*1200*1*X*005010X224A2~")))
+  (signals x12-parse-error (detect-delimiters "GS*HC*X*Y*20240601*1200*1*X*005010X224A2~")))

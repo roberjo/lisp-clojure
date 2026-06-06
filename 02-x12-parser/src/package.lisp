@@ -9,6 +9,6 @@
            #:functional-group-transactions
            #:transaction-segments
            #:transaction-control-number
-           #:parse-error
-           #:parse-error-message
-           #:parse-error-offset))
+           #:x12-parse-error
+           #:x12-parse-error-message
+           #:x12-parse-error-offset))

@@ -1,6 +1,5 @@
 (in-package #:x12-parser/tests)
 
-(def-suite validation-suite :description "Cross-DSL validation: parser feeds CLOS validate.")
 (in-suite validation-suite)
 
 (test parsed-fixture-validates-clean

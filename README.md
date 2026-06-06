@@ -8,21 +8,28 @@ A learning roadmap and project portfolio for qualifying as a **Senior Lisp Softw
 
 ## Status
 
-All five projects are scaffolded with substantive implementations and tests. End-to-end runs are not yet verified (no SBCL / Clojure CLI / BaseX on the dev box used to produce this). Per-project READMEs document local-run instructions.
+All five projects verified green on:
 
-| # | Project | Code | Tests | Run-verified |
-|---|---|---|---|---|
-| 01 | CL kvstore | ✅ | ✅ FiveAM suite | ⏳ pending local SBCL |
-| 02 | X12 837D parser | ✅ | ✅ FiveAM suite, 2 fixtures | ⏳ pending local SBCL |
-| 03 | Macros + CLOS DSL | ✅ | ✅ incl. macroexpand test | ⏳ pending local SBCL |
-| 04 | Clojure transform | ✅ | ✅ clojure.test | ⏳ pending local Clojure CLI |
-| 05 | XQuery docstore | ✅ docs/queries/loader | n/a (queries) | ⏳ pending local BaseX |
+- SBCL 2.6.5 (projects 01, 02, 03) — 32 tests across the three CL projects
+- deps.clj / Clojure 1.12.5 + Java 24 (project 04) — 4 tests, 21 assertions
+- BaseX 12.0 (project 05) — sample docs loaded, three queries return expected results
+- Python 3.13 (project 04 → 05 bridge)
 
-**Cross-project pipeline (when toolchains are installed):**
+| # | Project | Tests | Status |
+|---|---|---|---|
+| 01 | CL kvstore | 8 / 8 | ✅ green |
+| 02 | X12 837D parser | 15 / 15 | ✅ green |
+| 03 | Macros + CLOS DSL | 9 / 9 | ✅ green |
+| 04 | Clojure transform | 21 / 21 | ✅ green |
+| 05 | XQuery docstore | n/a (queries) | ✅ runs against BaseX |
+
+**Cross-project pipeline (verified end-to-end):**
 
 ```
 .edi ─[02 emit-plist.lisp]─▶ EDN ─[04 cli.clj]─▶ JSON ─[05 from-json.py]─▶ XML ─[BaseX]─▶ XQuery results
 ```
+
+Run everything: `make test` (or `./test-all.ps1` on Windows). Run the pipeline: `make e2e`.
 
 ---
 

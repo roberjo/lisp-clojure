@@ -40,7 +40,7 @@ the segment id followed by its element values."
   (let ((current-group nil)
         (current-tx nil)
         (current-tx-segments nil))
-    (flet ((finalize-tx ()
+    (labels ((finalize-tx ()
              (when current-tx
                (setf (transaction-segments current-tx)
                      (nreverse current-tx-segments))
@@ -82,5 +82,5 @@ the segment id followed by its element values."
             (t
              (if current-tx
                  (push seg current-tx-segments)
-                 (error 'parse-error
+                 (error 'x12-parse-error
                         :message (format nil "Segment ~A appeared outside any ST/SE" id))))))))))

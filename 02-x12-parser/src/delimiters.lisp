@@ -9,13 +9,13 @@
 ;;;
 ;;; A robust parser MUST read these from the input before splitting anything.
 
-(define-condition parse-error (error)
-  ((message :initarg :message :reader parse-error-message)
-   (offset  :initarg :offset  :reader parse-error-offset :initform nil))
+(define-condition x12-parse-error (error)
+  ((message :initarg :message :reader x12-parse-error-message)
+   (offset  :initarg :offset  :reader x12-parse-error-offset :initform nil))
   (:report (lambda (c s)
              (format s "X12 parse error~@[ at offset ~D~]: ~A"
-                     (parse-error-offset c)
-                     (parse-error-message c)))))
+                     (x12-parse-error-offset c)
+                     (x12-parse-error-message c)))))
 
 (defstruct delimiters
   (element     #\* :type character)
@@ -27,7 +27,7 @@
 Signals PARSE-ERROR if INPUT doesn't begin with \"ISA\" or is too short."
   (unless (and (>= (length input) 106)
                (string= "ISA" (subseq input 0 3)))
-    (error 'parse-error
+    (error 'x12-parse-error
            :offset 0
            :message "Input does not begin with an ISA segment"))
   (make-delimiters :element     (char input 3)

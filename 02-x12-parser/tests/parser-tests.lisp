@@ -1,6 +1,5 @@
 (in-package #:x12-parser/tests)
 
-(def-suite parser-suite :description "Envelope assembly.")
 (in-suite parser-suite)
 
 (defun fixture-path (name)
@@ -28,5 +27,5 @@
     (is (equal "0002" (transaction-control-number tx)))))
 
 (test stray-segment-outside-tx-signals
-  (signals parse-error
+  (signals x12-parse-error
     (parse-string "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *240601*1200*^*00501*000000001*0*P*:~NM1*41*2*ACME*~IEA*1*000000001~")))

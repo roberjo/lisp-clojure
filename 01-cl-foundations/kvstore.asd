@@ -19,9 +19,9 @@
   :components ((:module "tests"
                 :serial t
                 :components ((:file "package")
+                             (:file "suite")
                              (:file "memory-tests")
-                             (:file "file-tests")
-                             (:file "suite"))))
+                             (:file "file-tests"))))
   :perform (test-op (op c)
              (uiop:symbol-call :fiveam :run!
                                (uiop:find-symbol* :all-tests :kvstore/tests))))

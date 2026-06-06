@@ -19,11 +19,11 @@
   :components ((:module "tests"
                 :serial t
                 :components ((:file "package")
+                             (:file "suite")
                              (:file "delimiters-tests")
                              (:file "parser-tests")
                              (:file "validation-tests")
-                             (:file "roundtrip-tests")
-                             (:file "suite"))))
+                             (:file "roundtrip-tests"))))
   :perform (test-op (op c)
              (uiop:symbol-call :fiveam :run!
                                (uiop:find-symbol* :all-tests :x12-parser/tests))))

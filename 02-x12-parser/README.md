@@ -4,7 +4,7 @@ Parses X12 837D (dental claim) interchanges in Common Lisp. Built on project 03'
 
 ## Status
 
-Code complete with two synthetic 837D fixtures. Not run end-to-end (no SBCL on dev box).
+Green on SBCL 2.6.5 + FiveAM (15 tests, ~25 assertions) across both fixtures. End-to-end pipeline through projects 04 and 05 verified.
 
 ## What it does
 
@@ -71,4 +71,4 @@ sbcl --script bin/emit-plist.lisp samples/synthetic/minimal-837d.edi
 - [x] Structured validation errors (segment id + element position)
 - [x] Round-trip: parse → write → parse → equal structure
 - [x] CLI for downstream consumption by project 04
-- [ ] Verified green on SBCL (pending local run)
+- [x] Verified green on SBCL 2.6.5

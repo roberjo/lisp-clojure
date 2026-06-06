@@ -1,6 +1,5 @@
 (in-package #:kvstore/tests)
 
-(def-suite file-suite :description "File-backed backend tests.")
 (in-suite file-suite)
 
 (defun temp-path ()

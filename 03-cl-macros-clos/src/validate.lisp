@@ -59,7 +59,10 @@
 ;;; TRANSFORM-TO — to plist, the lingua franca for project 04.
 
 (defmethod transform-to ((tx transaction) (target (eql :plist)))
-  (list :type (class-name (class-of tx))
+  ;; The class-name's package prefix would leak into the EDN consumer
+  ;; (Clojure would see edi-dsl:dental-claim-transaction, not :dental-claim-transaction).
+  ;; Intern in the keyword package to strip the prefix.
+  (list :type (intern (symbol-name (class-name (class-of tx))) :keyword)
         :control-number (transaction-control-number tx)
         :segments (mapcar (lambda (seg)
                             (list :id (first seg)

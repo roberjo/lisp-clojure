@@ -1,6 +1,5 @@
 (in-package #:edi-dsl/tests)
 
-(def-suite segment-suite :description "DEFINE-SEGMENT macro and registry.")
 (in-suite segment-suite)
 
 ;;; The expansion test: prove the macro generates the shape we expect WITHOUT

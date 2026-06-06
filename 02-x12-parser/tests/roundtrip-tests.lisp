@@ -1,6 +1,5 @@
 (in-package #:x12-parser/tests)
 
-(def-suite roundtrip-suite :description "parse -> write -> compare.")
 (in-suite roundtrip-suite)
 
 (test roundtrip-minimal
