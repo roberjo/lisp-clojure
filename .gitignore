@@ -73,7 +73,10 @@ desktop.ini
 # Claude Code local settings
 .claude/settings.local.json
 
-# Sample EDI data (often contains PHI — never commit real claims)
+# Sample EDI data (often contains PHI — never commit real claims).
+# Synthetic fixtures (clearly fake data) ARE committed; real samples are not.
 samples/*.edi
 samples/*.x12
 samples/private/
+!samples/synthetic/
+!samples/synthetic/**
