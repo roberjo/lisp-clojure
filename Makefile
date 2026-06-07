@@ -36,6 +36,10 @@ test-06:
 	@echo "=== Project 06: adjudis-core ==="
 	cd 06-adjudis-core && $(CLOJURE) -X:test
 
+bench-06:
+	@echo "=== Project 06: benchmark ==="
+	cd 06-adjudis-core && $(CLOJURE) -M:bench
+
 # End-to-end: EDI -> CL plist -> JSON -> XML.
 # Requires Python 3 on PATH.
 e2e:
@@ -61,5 +65,6 @@ help:
 	@echo "Targets:"
 	@echo "  test              run all five test suites (default)"
 	@echo "  test-NN           run a specific project's suite"
+	@echo "  bench-06          run the project 06 adjudication benchmark"
 	@echo "  e2e               run EDI -> EDN -> JSON -> XML pipeline"
 	@echo "  adjudicate-demo   run the pipeline through adjudication"

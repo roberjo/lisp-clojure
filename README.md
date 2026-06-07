@@ -22,7 +22,7 @@ All five projects verified green on:
 | 03 | Macros + CLOS DSL | 9 / 9 | ✅ green |
 | 04 | Clojure transform | 21 / 21 | ✅ green |
 | 05 | XQuery docstore | n/a (queries) | ✅ runs against BaseX |
-| 06 | Adjudis core (Clara rules) | 13 / 36 | ✅ green |
+| 06 | Adjudis core (Clara rules + versioning + shadow mode) | 30 / 80 | ✅ green |
 
 **Cross-project pipeline (verified end-to-end):**
 

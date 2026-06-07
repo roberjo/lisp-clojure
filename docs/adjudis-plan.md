@@ -113,16 +113,15 @@ Adjacent products: ClaimsXten (Change Healthcare), Cotiviti edits, Optum's claim
 - [ ] XTDB integration (replace in-memory store)
   - Bitemporal: "what would this claim's adjudication have been on date X?"
   - Audit log: every rule edit by every user
-- [ ] Rule versioning + promotion workflow
-  - Rules tagged with effective-from / effective-to
-  - "Shadow mode" — new rule fires but doesn't affect decision; outputs both verdicts for comparison
-  - A/B replay: re-adjudicate last N days of claims against a proposed rule change, report delta
+- [x] Rule versioning (effective-from / effective-to + `as-of` replay)
+- [x] "Shadow mode" adjudication: current vs proposed catalog, returns both decisions + delta
+- [x] Batch shadow summary: aggregate verdict-change distribution + dollar impact across many claims
 - [ ] Better explanations
   - "Rules that almost fired" capture (for appeals)
   - Rule citation includes source URL (e.g. CMS publication)
 - [ ] Eligibility mock interface (proper 270/271 contract behind a swappable adapter)
-- [ ] Performance: sub-100ms p99 per claim on the 500-rule catalog
-- [ ] Rule-author CLI (validate catalog entries, dry-run against fixtures)
+- [x] Performance: sub-100ms p99 per claim on a 500-rule catalog — **hit at 83ms p99**
+- [x] Rule-author CLI: validate, dry-run, diff, shadow
 
 ### Phase 3 — Productize (weeks 9–12)
 

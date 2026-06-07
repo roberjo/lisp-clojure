@@ -42,6 +42,11 @@
 
 ;; CatalogRule: one rule loaded from resources/rule-catalog/. The engine inserts
 ;; every rule as a fact; the productions filter by :category.
+;;
+;; Versioning: optional :effective-from and :effective-to (ISO date strings).
+;; The engine drops rules whose effective window doesn't cover the claim's
+;; earliest service date BEFORE inserting them into the session, so per-rule
+;; LHS doesn't need to repeat the check.
 (defrecord CatalogRule
     [rule-id
      category
@@ -49,7 +54,9 @@
      severity
      reason-code
      params
-     citation])
+     citation
+     effective-from
+     effective-to])
 
 ;; ──────────────────────────────────────────────────────────────────────────
 ;; Output facts (emitted by rules)

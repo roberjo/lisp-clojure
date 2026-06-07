@@ -2,11 +2,12 @@
   "The public adjudication API. Hides Clara session construction and
    catalog/history loading from callers."
   (:require [clara.rules :as cr]
-            [adjudis.catalog :as catalog]
-            [adjudis.facts   :as f]
-            [adjudis.rules   :as rules]
-            [adjudis.history :as hist]
-            [adjudis.explain :as explain]))
+            [adjudis.catalog  :as catalog]
+            [adjudis.facts    :as f]
+            [adjudis.rules    :as rules]
+            [adjudis.history  :as hist]
+            [adjudis.explain  :as explain]
+            [adjudis.versions :as versions]))
 
 (defn- claim-input->facts
   "Convert the normalized claim map (project-04 shape) + member map to Clara
@@ -40,6 +41,13 @@
 (defn- catalog->facts [catalog-rules]
   (mapv #(f/map->CatalogRule %) catalog-rules))
 
+(defn- earliest-service-date [claim]
+  (->> (:service-lines claim)
+       (map :service-date)
+       (remove nil?)
+       sort
+       first))
+
 (defn adjudicate
   "Adjudicate a single claim.
 
@@ -47,20 +55,28 @@
              optional :pre-auth-reference and :network).
    member  — {:subscriber-id :date-of-birth :coverage-start :coverage-end}.
    opts    — {:history (HistoryStore)
-              :catalog (vector of catalog rules; defaults to loaded library)}
+              :catalog (vector of catalog rules; defaults to loaded library)
+              :as-of   (ISO date string; defaults to claim's earliest service date)}
+
+   Versioned: catalog rules are filtered to those whose effective window
+   covers :as-of. Rules without effective metadata are always considered
+   active. This is what enables replay — re-adjudicating an old claim
+   against the catalog that was active at the time.
 
    Returns the decision map (see adjudis.schema)."
-  [claim member {:keys [history catalog]
+  [claim member {:keys [history catalog as-of]
                  :or   {history (hist/make-atom-store)
                         catalog (catalog/load-catalog)}}]
-  (let [historical    (hist/lookup-lines history (:subscriber-id member))
-        catalog-facts (catalog->facts catalog)
-        claim-facts   (claim-input->facts claim member)
-        all-facts     (concat claim-facts catalog-facts historical)
-        session       (-> (cr/mk-session 'adjudis.rules)
-                          (cr/insert-all all-facts)
-                          (cr/fire-rules))
-        findings      (mapv :?finding (cr/query session rules/findings-query))]
+  (let [reference-date (or as-of (earliest-service-date claim))
+        active-catalog (versions/active-rules catalog reference-date)
+        historical     (hist/lookup-lines history (:subscriber-id member))
+        catalog-facts  (catalog->facts active-catalog)
+        claim-facts    (claim-input->facts claim member)
+        all-facts      (concat claim-facts catalog-facts historical)
+        session        (-> (cr/mk-session 'adjudis.rules)
+                           (cr/insert-all all-facts)
+                           (cr/fire-rules))
+        findings       (mapv :?finding (cr/query session rules/findings-query))]
     (explain/build-decision claim findings)))
 
 (defn adjudicate-and-record!

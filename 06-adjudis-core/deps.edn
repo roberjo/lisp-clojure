@@ -9,4 +9,9 @@
                           {:git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}
             :exec-fn     cognitect.test-runner.api/test}
 
-  :run-cli {:main-opts ["-m" "adjudis.cli"]}}}
+  :run-cli {:main-opts ["-m" "adjudis.cli"]}
+
+  :author  {:main-opts ["-m" "adjudis.author"]}
+
+  :bench   {:extra-paths ["test"]
+            :main-opts   ["-m" "adjudis.bench"]}}}
