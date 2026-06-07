@@ -131,11 +131,12 @@ Adjacent products: ClaimsXten (Change Healthcare), Cotiviti edits, Optum's claim
 - [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/catalog/:rule-id`, `/health`, `/version`
 - [x] Containerization (multi-stage Dockerfile, non-root runtime, HEALTHCHECK)
 - [x] CI/CD pipeline (GitHub Actions: test + container build + smoke test)
+- [x] Audit log of every privileged action (dedicated `audit` logger, separate appender)
+- [x] Prometheus metrics endpoint (auth attempts, adjudications by tenant+verdict, findings by category+severity, latency histograms, JVM defaults)
+- [x] Structured JSON logs with correlation IDs (logback + logstash encoder, MDC-propagated request_id + tenant_id, X-Request-Id response header)
 - [ ] RBAC inside a tenant (analyst can edit scrubbing rules, admin can edit adjudication)
-- [ ] Audit log of every privileged action
 - [ ] Web UI for rule authoring (React or HTMX rule library browser + edit-and-test)
-- [ ] Prometheus metrics endpoint (per-rule fire counts, decision latencies, error rates)
-- [ ] Structured JSON logs with correlation IDs
+- [ ] OpenTelemetry traces (parse → transform → adjudicate spans keyed by control number)
 - [ ] Helm chart for k8s deploy
 - [ ] Per-tenant fee schedules + benefit plans (separate from rule overlays)
 - [ ] WebSockets for streaming batch adjudication

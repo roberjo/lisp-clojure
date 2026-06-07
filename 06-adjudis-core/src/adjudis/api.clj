@@ -18,7 +18,9 @@
             [adjudis.schema   :as schema]
             [adjudis.versions :as versions]
             [adjudis.history  :as hist]
-            [adjudis.tenants  :as tenants]))
+            [adjudis.tenants  :as tenants]
+            [adjudis.logging  :as log]
+            [adjudis.metrics  :as metrics]))
 
 ;; ──────────────────────────────────────────────────────────────────────────
 ;; Context — injected by the server, read by handlers
@@ -97,11 +99,23 @@
         _       (require-keys body [:claim :member])
         {:keys [claim member as-of]} body
         context (ctx request)
+        tid     (:tenant-id (request-tenant request))
+        t0      (System/nanoTime)
         decision (engine/adjudicate claim member
                                     {:catalog (effective-catalog-for request)
                                      :history (:history context)
                                      :as-of   as-of})
-        tid     (:tenant-id (request-tenant request))]
+        elapsed-s (/ (- (System/nanoTime) t0) 1e9)]
+    (metrics/record-adjudication! tid (:verdict decision) elapsed-s)
+    (metrics/record-findings! (:findings decision))
+    (log/audit "claim_adjudicated"
+               :actor    (or tid "anonymous")
+               :action   "adjudicate"
+               :outcome  "success"
+               :claim-id (:claim-id claim)
+               :verdict  (name (:verdict decision))
+               :findings-count (count (:findings decision))
+               :duration-ms (* 1000.0 elapsed-s))
     {:status 200 :body (cond-> decision tid (assoc :tenant-id tid))}))
 
 (defn shadow-handler [request]
@@ -158,10 +172,38 @@
         (let [api-key (get-in request [:headers "x-api-key"])
               tenant  (tenants/lookup-by-api-key registry api-key)]
           (if tenant
-            (handler (assoc request ::tenant tenant))
-            {:status 401
-             :body   {:error   "unauthorized"
-                      :message "missing or invalid X-API-Key"}}))))))
+            (do (metrics/record-auth-attempt! :allowed)
+                (log/put-mdc :tenant_id (:tenant-id tenant))
+                (handler (assoc request ::tenant tenant)))
+            (do (metrics/record-auth-attempt! :denied)
+                (log/audit "auth_failed"
+                           :actor   "anonymous"
+                           :action  "authenticate"
+                           :outcome "denied"
+                           :reason  (if api-key "bad-key" "missing-key"))
+                {:status 401
+                 :body   {:error   "unauthorized"
+                          :message "missing or invalid X-API-Key"}})))))))
+
+(defn- wrap-correlation-id
+  "Generate a UUID per request, put it on MDC so every log line within the
+   request handler carries it, and echo it back as X-Request-Id on the
+   response. Idempotent — if the caller passed X-Request-Id we honor it."
+  [handler]
+  (fn [request]
+    (let [rid (or (get-in request [:headers "x-request-id"])
+                  (str (java.util.UUID/randomUUID)))]
+      (try
+        (log/put-mdc :request_id rid)
+        (let [response (handler (assoc request ::request-id rid))]
+          (assoc-in response [:headers "X-Request-Id"] rid))
+        (finally
+          (log/clear-mdc))))))
+
+(defn metrics-handler [_request]
+  {:status  200
+   :headers {"Content-Type" "text/plain; version=0.0.4"}
+   :body    (metrics/scrape)})
 
 ;; ──────────────────────────────────────────────────────────────────────────
 ;; Router
@@ -172,6 +214,10 @@
    [;; Public — load-balancer / ops dashboards
     ["/health"  {:get {:handler health-handler}}]
     ["/version" {:get {:handler version-handler}}]
+    ;; Prometheus scrape endpoint — public so scrapers don't carry secrets.
+    ;; In production, restrict via network policy or expose on a separate
+    ;; admin port.
+    ["/metrics" {:get {:handler metrics-handler}}]
 
     ;; Tenant-scoped — auth required if a tenants registry is configured
     ["" {:middleware [wrap-tenant-auth]}
@@ -182,6 +228,7 @@
      ["/shadow"     {:post {:handler shadow-handler}}]]]
    {:data {:muuntaja   m/instance
            :middleware [parameters/parameters-middleware
+                        wrap-correlation-id
                         muuntaja/format-negotiate-middleware
                         muuntaja/format-response-middleware
                         exception-middleware

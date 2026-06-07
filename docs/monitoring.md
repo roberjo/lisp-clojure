@@ -198,24 +198,18 @@ The error budgets these imply are the source of "should we deploy this?" decisio
 
 ## What this repo does today
 
-To set expectations honestly:
-
 | Signal | Status |
 |---|---|
-| Logs | Plain text to stdout. No correlation keys. No structured format. |
-| Metrics | None. |
-| Traces | None. |
-| Dashboards | None. |
-| Alerts | None. |
-| Canary | None (but `make e2e` is a manual canary). |
+| Structured JSON logs | ✅ Project 06: logback + logstash encoder, every line carries `request_id` and `tenant_id` via MDC |
+| Audit log | ✅ Project 06: dedicated `audit` logger routed to its own appender (separate retention in prod) |
+| Metrics | ✅ Project 06: iapetos + Prometheus at `/metrics` (JVM defaults + HTTP request latency + adjudis-specific: auth attempts by outcome, adjudications by tenant/verdict, findings by category/severity, adjudication duration histogram) |
+| Correlation IDs | ✅ Project 06: `X-Request-Id` honored or generated per request, echoed in response, propagated through MDC |
+| Traces | Not yet. OpenTelemetry sketched in the per-stage section above; implementation is a follow-up commit. |
+| Dashboards | Not in this repo (they live in Grafana). Prometheus metrics shape supports the dashboards described above. |
+| Alerts | Not in this repo (Alertmanager rules). Thresholds documented above. |
+| Canary | None (but `make e2e` and `make adjudicate-demo` are manual canaries that could trivially be cron'd). |
 
-What the repo HAS done is structure the code so adding this is straightforward:
-
-- Per-stage process boundaries mean logs are already isolated.
-- The `validation-error` struct is already a candidate for log payload.
-- The `transaction-control-number` is already a natural correlation key.
-
-What's missing is the cross-cutting concern (logging library, metrics emission, trace context propagation). That's a 2–3 day add for someone who knows the chosen libraries, deliberately scoped out of the portfolio.
+Projects 01–05 don't yet emit structured logs / metrics; they're CLI tools and the observability story attaches at the orchestrator that runs them. The interesting observability work in this repo lives in project 06 (the HTTP service).
 
 ---
 

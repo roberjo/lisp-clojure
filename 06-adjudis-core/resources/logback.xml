@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Structured JSON logging to stdout (12-factor app — collectors aggregate).
+
+  Two named loggers:
+    * "audit" — every privileged action; routed to its own appender so the
+      log shipper can index it separately and apply the longer (6-year+)
+      retention HIPAA requires for the audit trail.
+    * everything else — application logs, routed to STDOUT-JSON.
+
+  MDC keys we expect to appear on every line:
+    request_id  — UUID generated per HTTP request
+    tenant_id   — resolved tenant for the request (if auth succeeded)
+    route       — Reitit-resolved route name
+-->
+<configuration>
+
+  <appender name="STDOUT-JSON" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeContext>false</includeContext>
+      <customFields>{"service":"adjudis-core"}</customFields>
+      <fieldNames>
+        <timestamp>ts</timestamp>
+        <message>msg</message>
+        <thread>thread</thread>
+        <logger>logger</logger>
+      </fieldNames>
+    </encoder>
+  </appender>
+
+  <appender name="STDOUT-AUDIT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeContext>false</includeContext>
+      <customFields>{"service":"adjudis-core","stream":"audit"}</customFields>
+      <fieldNames>
+        <timestamp>ts</timestamp>
+        <message>msg</message>
+        <thread>thread</thread>
+        <logger>logger</logger>
+      </fieldNames>
+    </encoder>
+  </appender>
+
+  <!-- audit logger: never propagate to root; goes to its own appender only. -->
+  <logger name="audit" level="INFO" additivity="false">
+    <appender-ref ref="STDOUT-AUDIT"/>
+  </logger>
+
+  <!-- Quiet the most noisy third-party loggers. -->
+  <logger name="org.eclipse.jetty"  level="WARN"/>
+  <logger name="clara.rules"        level="WARN"/>
+
+  <root level="INFO">
+    <appender-ref ref="STDOUT-JSON"/>
+  </root>
+</configuration>

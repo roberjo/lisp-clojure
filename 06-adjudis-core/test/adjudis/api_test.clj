@@ -246,3 +246,60 @@
                         body-json)]
       (is (= 1000.0 (get-in acme-rule [:params :max-amount]))
           "acme override sets max-amount to 1000"))))
+
+;; ──────────────────────────────────────────────────────────────────────────
+;; Observability tests: correlation IDs + /metrics
+;; ──────────────────────────────────────────────────────────────────────────
+
+(deftest correlation-id-generated-when-absent
+  (let [r (GET "/health")]
+    (is (= 200 (:status r)))
+    (let [rid (get-in r [:headers "X-Request-Id"])]
+      (is (some? rid))
+      (is (re-matches #"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" rid)))))
+
+(deftest correlation-id-honored-when-present
+  (let [r (*app* {:request-method :get
+                  :uri            "/health"
+                  :headers        {"x-request-id" "supplied-by-caller-abc123"
+                                   "accept"       "application/json"}})]
+    (is (= "supplied-by-caller-abc123" (get-in r [:headers "X-Request-Id"])))))
+
+(deftest metrics-endpoint-returns-prometheus-format
+  (dotimes [_ 3] (GET "/health"))
+  (let [r    (GET "/metrics")
+        body (if (string? (:body r)) (:body r) (slurp (:body r)))]
+    (is (= 200 (:status r)))
+    (is (re-find #"# HELP" body) "should contain prometheus HELP comments")
+    (is (re-find #"adjudis_auth_attempts_total|jvm_" body)
+        "should contain at least one of our registered metrics or JVM defaults")))
+
+(deftest metrics-records-auth-attempts
+  (binding [*app* (new-app "resources/fixtures/tenants.edn")]
+    (GET "/catalog" nil "garbage-key")
+    (GET "/catalog" nil acme-key)
+    (let [r    (GET "/metrics")
+          body (if (string? (:body r)) (:body r) (slurp (:body r)))]
+      (is (re-find #"adjudis_auth_attempts_total\{outcome=\"denied\"" body))
+      (is (re-find #"adjudis_auth_attempts_total\{outcome=\"allowed\"" body)))))
+
+(deftest metrics-records-adjudications
+  (let [r (POST "/adjudicate"
+                {:claim {:claim-id "M-1"
+                         :control-number "1"
+                         :transaction-type "dental"
+                         :billing-provider "ACME"
+                         :subscriber {:member-id "M00112233"}
+                         :network "in-network"
+                         :total-charge 50.0
+                         :service-lines [{:line-number 1 :procedure-code "D0120"
+                                          :charge 50.0 :service-date "2024-09-15" :units 1}]}
+                 :member {:subscriber-id "M00112233"
+                          :date-of-birth "1985-03-12"
+                          :coverage-start "2024-01-01"
+                          :coverage-end "2024-12-31"
+                          :plan-type "ppo"}})]
+    (is (= 200 (:status r))))
+  (let [mr   (GET "/metrics")
+        body (if (string? (:body mr)) (:body mr) (slurp (:body mr)))]
+    (is (re-find #"adjudis_adjudications_total" body))))

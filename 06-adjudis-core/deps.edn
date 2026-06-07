@@ -5,7 +5,13 @@
          ;; HTTP API
          metosin/reitit-ring          {:mvn/version "0.7.2"}
          metosin/reitit-middleware    {:mvn/version "0.7.2"}
-         ring/ring-jetty-adapter      {:mvn/version "1.13.0"}}
+         ring/ring-jetty-adapter      {:mvn/version "1.13.0"}
+         ;; Observability
+         org.clojure/tools.logging          {:mvn/version "1.3.0"}
+         ch.qos.logback/logback-classic     {:mvn/version "1.5.11"}
+         net.logstash.logback/logstash-logback-encoder {:mvn/version "8.0"}
+         clj-commons/iapetos                {:mvn/version "0.1.13"}
+         io.prometheus/simpleclient_hotspot {:mvn/version "0.16.0"}}
 
  :aliases
  {:test    {:extra-paths ["test"]

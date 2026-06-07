@@ -6,7 +6,7 @@ This is **MVP / Phase 1** of the platform described in [`../docs/adjudis-plan.md
 
 ## Status
 
-Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **54 tests, 139 assertions.** CI green: https://github.com/roberjo/lisp-clojure/actions
+Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **59 tests, 150 assertions.** CI green: https://github.com/roberjo/lisp-clojure/actions
 
 Phase 1 (MVP) shipped. Phase 2 features added incrementally:
 - ✅ Rule versioning (effective-from / effective-to + as-of replay)
@@ -22,6 +22,9 @@ Phase 3 early items now shipped:
 - ✅ GitHub Actions CI running all five test suites + container build smoke test
 - ✅ Multi-tenant catalog overlays (add / override / remove on top of base)
 - ✅ API key auth (X-API-Key) with tenant resolution + isolation
+- ✅ Structured JSON logs (logback + logstash encoder) with correlation IDs
+- ✅ Audit log (separate logger) on every privileged action
+- ✅ Prometheus metrics at /metrics (JVM + HTTP + adjudis-specific instruments)
 
 **Benchmark snapshot** (`make bench-06`):
 
@@ -159,10 +162,13 @@ Endpoints:
 |---|---|---|---|
 | GET | `/health` | public | `{"status":"ok"}` |
 | GET | `/version` | public | `{"engine-version":"…","catalog-version":"…"}` |
+| GET | `/metrics` | public | Prometheus exposition format (scrape endpoint) |
 | GET | `/catalog?as-of=YYYY-MM-DD` | tenant | active rules for the tenant at the optional `as-of` date |
 | GET | `/catalog/:rule-id` | tenant | a single rule from the tenant's effective catalog, or 404 |
 | POST | `/adjudicate` | tenant | adjudication decision (against the tenant's effective catalog) |
 | POST | `/shadow` | tenant | current/proposed/delta |
+
+Every response carries `X-Request-Id` (echoed if the caller sent one, otherwise generated as a UUIDv4). The same id appears as `request_id` on every log line for that request.
 
 Validation errors return HTTP 400 with `{"error":"validation","details":{"missing":[…]}}`.
 
@@ -183,6 +189,37 @@ curl -H 'X-API-Key: akey-acme-dev-only-do-not-use-in-prod' http://localhost:8080
 ```
 
 Tenant isolation: every protected handler computes the requesting tenant's effective catalog before calling the engine. No shared mutable state between tenants in the engine path. There are tests that adjudicate the same claim through two tenants and assert that Tenant A's custom rules do NOT appear in Tenant B's findings.
+
+### Observability
+
+Every HTTP response includes `X-Request-Id`. Every log line includes the same id under `request_id` (via SLF4J MDC), plus `tenant_id` if the request authenticated.
+
+Sample log line:
+
+```json
+{"ts":"2026-06-07T08:35:15.387-04:00","msg":"{:actor \"acme-dental\",
+ :action \"adjudicate\", :outcome \"success\", :claim-id \"T-CLAIM\",
+ :verdict \"pending\", :findings-count 4, :duration-ms 62.6,
+ :event \"claim_adjudicated\"}","logger":"audit","thread":"main",
+ "level":"INFO","tenant_id":"acme-dental",
+ "request_id":"6f38abfd-c6e5-4ee9-93c6-620451103bd3",
+ "service":"adjudis-core","stream":"audit"}
+```
+
+Two logger streams:
+- `audit` — every privileged action (auth attempt, adjudicate). Routed to its own appender; in production the log shipper indexes it separately with HIPAA-required retention (6+ years).
+- everything else — application logs.
+
+Prometheus scrape:
+
+```bash
+curl http://localhost:8080/metrics | grep '^adjudis_'
+# adjudis_auth_attempts_total{outcome="allowed"}  42
+# adjudis_auth_attempts_total{outcome="denied"}    3
+# adjudis_adjudications_total{tenant="acme-dental",verdict="paid"}    18
+# adjudis_findings_emitted_total{category="frequency-limit",severity="deny"}  4
+# adjudis_adjudication_duration_seconds histogram (p50/p95/p99 derivable)
+```
 
 Sample overlay shape ([`resources/fixtures/tenants.edn`](resources/fixtures/tenants.edn)):
 
@@ -328,12 +365,15 @@ MVP is CLI-only. Phase 3 adds the HTTP API + web rule-author UI. Doing it now wo
 - [x] Hit Phase 2 SLO: sub-100ms p99 on a 500-rule catalog (83ms)
 
 **Phase 3 early items:**
-- [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/health`, `/version`
+- [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/health`, `/version`, `/metrics`
 - [x] Uberjar build via tools.build
 - [x] Multi-stage Dockerfile, non-root runtime, healthcheck against `/health`
 - [x] GitHub Actions CI running all 5 project test suites + container build + smoke test
 - [x] Multi-tenant catalog overlays (add / override / remove composition)
 - [x] API key auth (X-API-Key header), tenant resolution, tenant isolation in handlers
+- [x] Structured JSON logs (logback + logstash encoder) — every line carries `request_id` and (when applicable) `tenant_id` via MDC
+- [x] Audit log (sibling logger routed to its own appender) on auth attempts and adjudications
+- [x] Prometheus metrics at `/metrics`: HTTP request latency, auth attempts by outcome, adjudications by tenant+verdict, findings by category+severity, plus JVM defaults
 
 ## See also
 
