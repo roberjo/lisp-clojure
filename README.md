@@ -180,4 +180,4 @@ A realistic sequence. Adjust pace to your available hours; the ordering matters 
 
 ## A note on the experience bar
 
-The "3+ years Common Lisp" requirement is steep and is largely time-in-seat that a study plan can't manufacture. This repo is the strongest substitute: concrete, non-trivial, domain-relevant work. It is worth emailing **jobs@luzontech.com** early to ask how firm that line is — many teams flex it for strong generalist engineers who can clearly ramp, and this portfolio is the evidence that you can.
+The "3+ years Common Lisp" requirement is steep and is largely time-in-seat that a study plan can't manufacture. This repo is the strongest substitute: concrete, non-trivial, domain-relevant work. It is worth emailing early to ask how firm that line is — many teams flex it for strong generalist engineers who can clearly ramp, and this portfolio is the evidence that you can.
