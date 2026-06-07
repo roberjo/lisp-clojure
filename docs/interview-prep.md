@@ -64,4 +64,4 @@ A working set of answers to the questions a senior Lisp interview is likely to s
 
 ## The experience-bar conversation
 
-The 3+ years CL line is the gating risk. Plan: email **jobs@luzontech.com** early with a short note referencing this portfolio, asking how firm the experience requirement is. Don't apply cold against a hard filter.
+The 3+ years CL line is the gating risk. Plan: email the hiring contact early with a short note referencing this portfolio, asking how firm the experience requirement is. Don't apply cold against a hard filter.

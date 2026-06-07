@@ -97,4 +97,4 @@ Reviewer for the above: anyone with a checkout that runs `make test` cleanly. (F
 - Clojure idiom: clojure.org/guides, Eric Normand on transducers.
 - BaseX: docs.basex.org.
 
-For things not covered: email `jobs@luzontech.com` — the target hiring contact for this portfolio. They know the domain.
+For things not covered: ask in an issue.
