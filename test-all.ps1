@@ -29,4 +29,10 @@ Run-Suite "Project 04: edi.transform"  "$repoRoot\04-clojure-edi-transform" { cl
 Run-Suite "Project 06: adjudis-core"   "$repoRoot\06-adjudis-core"          { clojure -X:test }
 
 Write-Host ""
+Write-Host "Tip:" -ForegroundColor DarkGray
+Write-Host "  clojure -M:serve   in 06-adjudis-core to start the HTTP API" -ForegroundColor DarkGray
+Write-Host "  clojure -T:build uber   to build the uberjar"               -ForegroundColor DarkGray
+Write-Host "  docker build -t adjudis-core:0.1.0 -f 06-adjudis-core/Dockerfile 06-adjudis-core" -ForegroundColor DarkGray
+
+Write-Host ""
 Write-Host "All test suites passed." -ForegroundColor Green

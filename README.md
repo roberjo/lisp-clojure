@@ -1,5 +1,7 @@
 # lisp-edi-portfolio
 
+[![test](https://github.com/roberjo/lisp-clojure/actions/workflows/test.yml/badge.svg)](https://github.com/roberjo/lisp-clojure/actions/workflows/test.yml)
+
 A learning roadmap and project portfolio for qualifying as a **Senior Lisp Software Engineer** on a healthcare EDI team. This repo demonstrates Common Lisp depth, working Clojure, and familiarity with document-oriented data (MarkLogic / XML) — applied to the real domain of X12 healthcare EDI (claims, remittance, eligibility).
 
 > **Target role:** Design, create, and maintain software interfacing with clearinghouses, Medicaid agencies, and plan sponsors using Lisp, Clojure, and MarkLogic.
@@ -22,7 +24,7 @@ All five projects verified green on:
 | 03 | Macros + CLOS DSL | 9 / 9 | ✅ green |
 | 04 | Clojure transform | 21 / 21 | ✅ green |
 | 05 | XQuery docstore | n/a (queries) | ✅ runs against BaseX |
-| 06 | Adjudis core (Clara rules + versioning + shadow mode) | 30 / 80 | ✅ green |
+| 06 | Adjudis core (Clara rules + versioning + shadow + HTTP API) | 39 / 105 | ✅ green |
 
 **Cross-project pipeline (verified end-to-end):**
 

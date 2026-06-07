@@ -109,7 +109,7 @@ git push ─▶ CI ─┬─▶ make test          (Linux runner with full toolc
                   deploy to prod
 ```
 
-A starter `.github/workflows/test.yml` is the natural next add to this repo. Outline:
+The repo's actual CI workflow is at [`.github/workflows/test.yml`](../.github/workflows/test.yml). Outline:
 
 ```yaml
 name: test

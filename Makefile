@@ -7,7 +7,10 @@
 SBCL    ?= sbcl
 CLOJURE ?= clojure
 
-.PHONY: all test test-01 test-02 test-03 test-04 test-06 e2e adjudicate-demo clean help
+.PHONY: all test test-01 test-02 test-03 test-04 test-06 bench-06 \
+        e2e adjudicate-demo \
+        uberjar-06 docker-build-06 serve-06 \
+        clean help
 
 all: test
 
@@ -40,6 +43,18 @@ bench-06:
 	@echo "=== Project 06: benchmark ==="
 	cd 06-adjudis-core && $(CLOJURE) -M:bench
 
+uberjar-06:
+	@echo "=== Project 06: uberjar ==="
+	cd 06-adjudis-core && $(CLOJURE) -T:build uber
+
+docker-build-06: uberjar-06
+	@echo "=== Project 06: docker image ==="
+	docker build -t adjudis-core:0.1.0 -f 06-adjudis-core/Dockerfile 06-adjudis-core
+
+serve-06:
+	@echo "=== Project 06: starting HTTP API on PORT=$${PORT:-8080} ==="
+	cd 06-adjudis-core && $(CLOJURE) -M:serve
+
 # End-to-end: EDI -> CL plist -> JSON -> XML.
 # Requires Python 3 on PATH.
 e2e:
@@ -68,3 +83,6 @@ help:
 	@echo "  bench-06          run the project 06 adjudication benchmark"
 	@echo "  e2e               run EDI -> EDN -> JSON -> XML pipeline"
 	@echo "  adjudicate-demo   run the pipeline through adjudication"
+	@echo "  uberjar-06        build the adjudis-core standalone jar"
+	@echo "  docker-build-06   build the adjudis-core container image"
+	@echo "  serve-06          start the adjudis-core HTTP API"

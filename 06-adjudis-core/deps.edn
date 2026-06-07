@@ -1,12 +1,17 @@
 {:paths ["src" "resources"]
- :deps  {org.clojure/clojure        {:mvn/version "1.12.0"}
-         com.cerner/clara-rules     {:mvn/version "0.24.0"}
-         cheshire/cheshire          {:mvn/version "5.13.0"}}
+ :deps  {org.clojure/clojure          {:mvn/version "1.12.0"}
+         com.cerner/clara-rules       {:mvn/version "0.24.0"}
+         cheshire/cheshire            {:mvn/version "5.13.0"}
+         ;; HTTP API
+         metosin/reitit-ring          {:mvn/version "0.7.2"}
+         metosin/reitit-middleware    {:mvn/version "0.7.2"}
+         ring/ring-jetty-adapter      {:mvn/version "1.13.0"}}
 
  :aliases
  {:test    {:extra-paths ["test"]
             :extra-deps  {io.github.cognitect-labs/test-runner
-                          {:git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}
+                          {:git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}
+                          ring/ring-mock {:mvn/version "0.4.0"}}
             :exec-fn     cognitect.test-runner.api/test}
 
   :run-cli {:main-opts ["-m" "adjudis.cli"]}
@@ -14,4 +19,9 @@
   :author  {:main-opts ["-m" "adjudis.author"]}
 
   :bench   {:extra-paths ["test"]
-            :main-opts   ["-m" "adjudis.bench"]}}}
+            :main-opts   ["-m" "adjudis.bench"]}
+
+  :serve   {:main-opts ["-m" "adjudis.server"]}
+
+  :build   {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
+            :ns-default build}}}

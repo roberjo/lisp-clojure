@@ -6,7 +6,7 @@ This is **MVP / Phase 1** of the platform described in [`../docs/adjudis-plan.md
 
 ## Status
 
-Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **30 tests, 80 assertions.**
+Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **39 tests, 105 assertions.**
 
 Phase 1 (MVP) shipped. Phase 2 features added incrementally:
 - ✅ Rule versioning (effective-from / effective-to + as-of replay)
@@ -15,7 +15,13 @@ Phase 1 (MVP) shipped. Phase 2 features added incrementally:
 - ✅ Synthetic catalog generator + latency benchmark
 - ⏳ XTDB integration (still atom-based store)
 - ⏳ Real CMS NCCI / MUE ingestion
-- ⏳ HTTP API + multi-tenancy (Phase 3)
+
+Phase 3 early items now shipped:
+- ✅ HTTP API (Reitit + ring-jetty)
+- ✅ Uberjar build (tools.build) + Dockerfile
+- ✅ GitHub Actions CI running all five test suites + container build smoke test
+- ⏳ Multi-tenant overlays
+- ⏳ AuthN/AuthZ (API keys, RBAC)
 
 **Benchmark snapshot** (`make bench-06`):
 
@@ -140,6 +146,44 @@ clojure -M:bench
 # Reports mean / p50 / p95 / p99 across 4 catalog sizes.
 ```
 
+### HTTP API (`:serve`)
+
+```bash
+PORT=8080 clojure -M:serve
+# adjudis 0.1.0 listening on port 8080 (catalog 2024-Q2-mvp)
+```
+
+Endpoints:
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/health` | — | `{"status":"ok"}` |
+| GET | `/version` | — | `{"engine-version":"…","catalog-version":"…"}` |
+| GET | `/catalog?as-of=YYYY-MM-DD` | — | active rules at the optional `as-of` date |
+| GET | `/catalog/:rule-id` | — | a single rule, or 404 |
+| POST | `/adjudicate` | `{"claim":…, "member":…, "as-of":…?}` | adjudication decision |
+| POST | `/shadow` | `{"claim":…, "member":…, "proposed-catalog":[…]}` | current/proposed/delta |
+
+Validation errors return HTTP 400 with `{"error":"validation","details":{"missing":[…]}}`.
+
+### Docker
+
+```bash
+docker build -t adjudis-core:0.1.0 -f Dockerfile .
+docker run --rm -p 8080:8080 adjudis-core:0.1.0
+curl http://localhost:8080/health
+```
+
+Multi-stage build, non-root runtime user, `HEALTHCHECK` against `/health`, sub-200MB final image (JRE + uberjar).
+
+### Build (uberjar)
+
+```bash
+clojure -T:build uber
+# → target/adjudis-core-0.1.0-standalone.jar
+java -jar target/adjudis-core-0.1.0-standalone.jar
+```
+
 ## Sample decision
 
 Input (the third-prophy fixture):
@@ -233,7 +277,7 @@ MVP is CLI-only. Phase 3 adds the HTTP API + web rule-author UI. Doing it now wo
 - [x] History store with XTDB-swappable protocol
 - [x] Verified green on Clojure 1.12.5 + Clara 0.24.0
 
-**Phase 2 (shipped this iteration):**
+**Phase 2:**
 - [x] Rule versioning with `:effective-from` / `:effective-to`
 - [x] `as-of` replay support (re-adjudicate historical claims under historical catalog)
 - [x] Shadow-mode adjudication (current vs proposed catalog with delta)
@@ -242,6 +286,12 @@ MVP is CLI-only. Phase 3 adds the HTTP API + web rule-author UI. Doing it now wo
 - [x] Catalog schema validation (required keys, known categories, severities, duplicate ids)
 - [x] Procedural large-catalog generator + latency benchmark
 - [x] Hit Phase 2 SLO: sub-100ms p99 on a 500-rule catalog (83ms)
+
+**Phase 3 early items:**
+- [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/health`, `/version`
+- [x] Uberjar build via tools.build
+- [x] Multi-stage Dockerfile, non-root runtime, healthcheck against `/health`
+- [x] GitHub Actions CI running all 5 project test suites + container build + smoke test
 
 ## See also
 

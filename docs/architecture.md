@@ -67,7 +67,7 @@ A technical deep dive into how the five projects fit together. Companion to per-
 
 Project 01 (`kvstore`) is intentionally outside this flow. It exists to demonstrate the CL toolchain shape (ASDF, packages, generics, FiveAM) without coupling that demonstration to X12.
 
-Project 06 (`adjudis-core`) is a parallel sink off the JSON intermediate: instead of (or in addition to) loading into a document store, claims are run through a Clara-based rules engine that emits an adjudication decision with full rule-citation provenance. It's the MVP of the platform documented in [adjudis-plan.md](adjudis-plan.md).
+Project 06 (`adjudis-core`) is a parallel sink off the JSON intermediate: instead of (or in addition to) loading into a document store, claims are run through a Clara-based rules engine that emits an adjudication decision with full rule-citation provenance. It's the MVP of the platform documented in [adjudis-plan.md](adjudis-plan.md). Phase 2 and early Phase 3 (HTTP API, container, CI) have shipped.
 
 ```
                   04 JSON output
@@ -76,6 +76,10 @@ Project 06 (`adjudis-core`) is a parallel sink off the JSON intermediate: instea
             ▼                     ▼
        05 XML/BaseX          06 adjudication
        (retrieval)           (decision + citations)
+                             ├── CLI (stdin → stdout)
+                             ├── Author CLI (validate/diff/shadow)
+                             └── HTTP API (Reitit + Jetty;
+                                 deployed via Dockerfile)
 ```
 
 ---
