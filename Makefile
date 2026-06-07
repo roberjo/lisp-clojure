@@ -7,11 +7,11 @@
 SBCL    ?= sbcl
 CLOJURE ?= clojure
 
-.PHONY: all test test-01 test-02 test-03 test-04 e2e clean help
+.PHONY: all test test-01 test-02 test-03 test-04 test-06 e2e adjudicate-demo clean help
 
 all: test
 
-test: test-01 test-03 test-02 test-04
+test: test-01 test-03 test-02 test-04 test-06
 	@echo
 	@echo "All test suites passed."
 
@@ -32,6 +32,10 @@ test-04:
 	@echo "=== Project 04: clojure transform ==="
 	cd 04-clojure-edi-transform && $(CLOJURE) -X:test
 
+test-06:
+	@echo "=== Project 06: adjudis-core ==="
+	cd 06-adjudis-core && $(CLOJURE) -X:test
+
 # End-to-end: EDI -> CL plist -> JSON -> XML.
 # Requires Python 3 on PATH.
 e2e:
@@ -40,11 +44,22 @@ e2e:
 	  | (cd ../04-clojure-edi-transform && $(CLOJURE) -M:run-cli) \
 	  | python3 05-marklogic-docstore/scripts/from-json.py --multi
 
+# Adjudicate the e2e-produced claim against the rule library.
+# Requires the full pipeline to be runnable.
+adjudicate-demo:
+	@echo "=== Pipeline + Adjudication ==="
+	cd 02-x12-parser && $(SBCL) --script bin/emit-plist.lisp samples/synthetic/minimal-837d.edi \
+	  | (cd ../04-clojure-edi-transform && $(CLOJURE) -M:run-cli) \
+	  | (cd ../06-adjudis-core && $(CLOJURE) -M:run-cli \
+	       --member resources/fixtures/member-doe-jane.edn \
+	       --history resources/fixtures/history-doe-jane.edn)
+
 clean:
 	@echo "Nothing to clean (no build artifacts checked in)."
 
 help:
 	@echo "Targets:"
-	@echo "  test     run all four test suites (default)"
-	@echo "  test-NN  run a specific project's suite"
-	@echo "  e2e      run the cross-language pipeline end-to-end"
+	@echo "  test              run all five test suites (default)"
+	@echo "  test-NN           run a specific project's suite"
+	@echo "  e2e               run EDI -> EDN -> JSON -> XML pipeline"
+	@echo "  adjudicate-demo   run the pipeline through adjudication"

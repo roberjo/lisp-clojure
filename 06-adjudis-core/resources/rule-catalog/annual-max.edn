@@ -1,0 +1,9 @@
+;; Annual maximum benefit: rolling per-member spend ceiling.
+[{:rule-id     "DENTAL-ANNUAL-MAX-DEFAULT"
+  :category    :annual-maximum
+  :description "Default dental plan annual maximum is $1,500."
+  :severity    :pending     ;; pend, not deny — apply remaining benefit, write off rest
+  :reason-code "ANN-MAX-EXCEEDED"
+  :params      {:max-amount      1500.00
+                :benefit-period  :calendar-year}
+  :citation    {:source "Standard PPO plan; consult member's specific plan"}}]

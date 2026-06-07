@@ -1,0 +1,27 @@
+;; Age-appropriate-code rules: ADA codes that restrict by subscriber age.
+[{:rule-id     "DENTAL-CHILD-PROPHY-AGE"
+  :category    :age-appropriate
+  :description "Child prophylaxis (D1120) is for patients under age 14."
+  :severity    :deny
+  :reason-code "AGE-CHILD-PROPHY"
+  :params      {:procedure-codes #{"D1120"}
+                :max-age         13}
+  :citation    {:source "ADA CDT 2024 nomenclature"}}
+
+ {:rule-id     "DENTAL-ADULT-PROPHY-AGE"
+  :category    :age-appropriate
+  :description "Adult prophylaxis (D1110) is for patients age 14 and over."
+  :severity    :deny
+  :reason-code "AGE-ADULT-PROPHY"
+  :params      {:procedure-codes #{"D1110"}
+                :min-age         14}
+  :citation    {:source "ADA CDT 2024 nomenclature"}}
+
+ {:rule-id     "DENTAL-SEALANT-AGE"
+  :category    :age-appropriate
+  :description "Sealant (D1351) typically covered through age 15."
+  :severity    :deny
+  :reason-code "AGE-SEALANT"
+  :params      {:procedure-codes #{"D1351"}
+                :max-age         15}
+  :citation    {:source "Standard plan dental benefit; pediatric coverage"}}]

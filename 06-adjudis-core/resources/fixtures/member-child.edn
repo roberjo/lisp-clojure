@@ -1,0 +1,6 @@
+;; Same household; under 14 — used for age-rule tests.
+{:subscriber-id   "M00112299"
+ :date-of-birth   "2018-08-04"
+ :coverage-start  "2024-01-01"
+ :coverage-end    "2024-12-31"
+ :plan-type       :ppo}

@@ -1,0 +1,7 @@
+;; Two prior adjudicated prophys for Jane in 2024 — a third prophy this year
+;; should trip the frequency rule.
+{"M00112233"
+ [{:procedure-code "D0120" :service-date "2024-01-15" :allowed-amount 50.00}
+  {:procedure-code "D1110" :service-date "2024-01-15" :allowed-amount 100.00}
+  {:procedure-code "D0120" :service-date "2024-07-08" :allowed-amount 50.00}
+  {:procedure-code "D1110" :service-date "2024-07-08" :allowed-amount 100.00}]}

@@ -1,0 +1,5 @@
+{:subscriber-id   "M00112233"
+ :date-of-birth   "1985-03-12"
+ :coverage-start  "2024-01-01"
+ :coverage-end    "2024-12-31"
+ :plan-type       :ppo}

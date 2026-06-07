@@ -21,11 +21,12 @@ function Run-Suite {
 
 $repoRoot = $PSScriptRoot
 
-# Project order: 01 -> 03 -> 02 (depends on 03) -> 04
+# Project order: 01 -> 03 -> 02 (depends on 03) -> 04 -> 06
 Run-Suite "Project 01: kvstore"        "$repoRoot\01-cl-foundations"        { sbcl --non-interactive --load run-tests.lisp }
 Run-Suite "Project 03: edi-dsl"        "$repoRoot\03-cl-macros-clos"        { sbcl --non-interactive --load run-tests.lisp }
 Run-Suite "Project 02: x12-parser"     "$repoRoot\02-x12-parser"            { sbcl --non-interactive --load run-tests.lisp }
 Run-Suite "Project 04: edi.transform"  "$repoRoot\04-clojure-edi-transform" { clojure -X:test }
+Run-Suite "Project 06: adjudis-core"   "$repoRoot\06-adjudis-core"          { clojure -X:test }
 
 Write-Host ""
 Write-Host "All test suites passed." -ForegroundColor Green

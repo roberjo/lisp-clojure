@@ -1,0 +1,9 @@
+;; Pre-authorization rules: claim must reference an approved auth or be pended.
+[{:rule-id     "DENTAL-PREAUTH-CROWN"
+  :category    :pre-auth-required
+  :description "Crowns (D2740) require pre-authorization above $500."
+  :severity    :pending
+  :reason-code "PREAUTH-REQUIRED"
+  :params      {:procedure-codes #{"D2740" "D2750" "D2790"}
+                :threshold-amount 500.00}
+  :citation    {:source "Standard PPO plan; major-service pre-auth"}}]

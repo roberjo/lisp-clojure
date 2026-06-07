@@ -1,0 +1,8 @@
+;; Eligibility rules: member must be active on the date of service.
+[{:rule-id     "MEMBER-ACTIVE-ON-DOS"
+  :category    :eligibility
+  :description "Member coverage must be active on the date of service."
+  :severity    :deny
+  :reason-code "ELIG-INACTIVE"
+  :params      {}      ;; eligibility data comes from the Member fact, not catalog
+  :citation    {:source "HIPAA 270/271 eligibility transaction set"}}]

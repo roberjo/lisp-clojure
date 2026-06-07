@@ -1,0 +1,22 @@
+;; Fee schedule: allowed amount per procedure code.
+;; Charges above the allowed amount become provider write-off (in-network)
+;; or patient responsibility (out-of-network).
+;;
+;; This is a single in-network schedule for the MVP. Phase 2 splits per-payer
+;; per-provider-tier.
+[{:rule-id     "DENTAL-FEE-SCHEDULE-INN"
+  :category    :fee-schedule
+  :description "In-network allowed amounts for common dental procedures."
+  :severity    :adjust
+  :reason-code "FEE-ADJ"
+  :params      {:network :in-network
+                :schedule {"D0120" 50.00      ;; periodic exam
+                           "D1110" 100.00     ;; adult prophy
+                           "D1120" 90.00      ;; child prophy
+                           "D1208" 40.00      ;; fluoride
+                           "D1351" 65.00      ;; sealant
+                           "D2150" 175.00     ;; 2-surface amalgam
+                           "D2740" 1100.00    ;; porcelain crown
+                           "D7140" 220.00     ;; extraction, erupted tooth
+                           }}
+  :citation    {:source "Sample in-network fee schedule (synthetic)"}}]

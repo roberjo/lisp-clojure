@@ -1,0 +1,36 @@
+;; Frequency-limit rules: how often a code can appear within a benefit year.
+[{:rule-id     "DENTAL-PROPHY-ADULT-FREQ"
+  :category    :frequency-limit
+  :description "Adult prophylaxis (D1110) limited to 2 per benefit year."
+  :severity    :deny
+  :reason-code "FREQ-PROPHY-ADULT"
+  :params      {:procedure-codes #{"D1110"}
+                :max-per-year    2}
+  :citation    {:source "ADA CDT 2024; standard plan benefit limit"}}
+
+ {:rule-id     "DENTAL-PROPHY-CHILD-FREQ"
+  :category    :frequency-limit
+  :description "Child prophylaxis (D1120) limited to 2 per benefit year."
+  :severity    :deny
+  :reason-code "FREQ-PROPHY-CHILD"
+  :params      {:procedure-codes #{"D1120"}
+                :max-per-year    2}
+  :citation    {:source "ADA CDT 2024; standard plan benefit limit"}}
+
+ {:rule-id     "DENTAL-EXAM-FREQ"
+  :category    :frequency-limit
+  :description "Periodic oral evaluation (D0120) limited to 2 per benefit year."
+  :severity    :deny
+  :reason-code "FREQ-EXAM"
+  :params      {:procedure-codes #{"D0120"}
+                :max-per-year    2}
+  :citation    {:source "ADA CDT 2024"}}
+
+ {:rule-id     "DENTAL-FLUORIDE-FREQ"
+  :category    :frequency-limit
+  :description "Topical fluoride (D1208) limited to 2 per benefit year."
+  :severity    :deny
+  :reason-code "FREQ-FLUORIDE"
+  :params      {:procedure-codes #{"D1208"}
+                :max-per-year    2}
+  :citation    {:source "ADA CDT 2024"}}]

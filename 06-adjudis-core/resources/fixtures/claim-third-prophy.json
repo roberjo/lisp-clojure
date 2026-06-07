@@ -1,0 +1,1 @@
+{"transaction-type":"dental","control-number":"0002","claim-id":"PCN999","total-charge":150.00,"billing-provider":"ACME DENTAL","subscriber":{"last":"DOE","first":"JANE","member-id":"M00112233"},"service-lines":[{"line-number":1,"procedure-code":"D1110","charge":150.00,"service-date":"2024-12-01","units":1}]}

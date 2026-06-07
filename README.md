@@ -22,14 +22,18 @@ All five projects verified green on:
 | 03 | Macros + CLOS DSL | 9 / 9 | ✅ green |
 | 04 | Clojure transform | 21 / 21 | ✅ green |
 | 05 | XQuery docstore | n/a (queries) | ✅ runs against BaseX |
+| 06 | Adjudis core (Clara rules) | 13 / 36 | ✅ green |
 
 **Cross-project pipeline (verified end-to-end):**
 
 ```
-.edi ─[02 emit-plist.lisp]─▶ EDN ─[04 cli.clj]─▶ JSON ─[05 from-json.py]─▶ XML ─[BaseX]─▶ XQuery results
+.edi ─[02 emit-plist.lisp]─▶ EDN ─[04 cli.clj]─▶ JSON ─┬─▶ [05 from-json.py]─▶ XML ─[BaseX]─▶ XQuery results
+                                                       │
+                                                       └─▶ [06 adjudis cli]──▶ adjudication decision JSON
+                                                                                (with rule citations)
 ```
 
-Run everything: `make test` (or `./test-all.ps1` on Windows). Run the pipeline: `make e2e`.
+Run everything: `make test` (or `./test-all.ps1` on Windows). Run the storage pipeline: `make e2e`. Run the adjudication pipeline: `make adjudicate-demo`.
 
 ---
 
@@ -51,6 +55,9 @@ Run everything: `make test` (or `./test-all.ps1` on Windows). Run the pipeline: 
 **Career-facing:**
 - [docs/learning-plan.md](docs/learning-plan.md) — the 6-month plan + what's done
 - [docs/interview-prep.md](docs/interview-prep.md) — talking points mapped to artifacts
+
+**Building beyond the base portfolio:**
+- [docs/adjudis-plan.md](docs/adjudis-plan.md) — full 3-month plan for a claim-adjudication platform on top of the existing pipeline (project 06 is its MVP)
 
 ---
 
@@ -78,8 +85,10 @@ lisp-edi-portfolio/
 ├── 03-cl-macros-clos/             # macros + CLOS abstraction (used by 02)
 ├── 04-clojure-edi-transform/      # Clojure pipeline transforming parsed EDI
 ├── 05-marklogic-docstore/         # BaseX/XQuery doc-store modeling
+├── 06-adjudis-core/               # Clara-based claim adjudication engine (MVP)
 └── docs/
     ├── architecture.md            # technical deep dive
+    ├── adjudis-plan.md            # full 3-month plan for project 06
     ├── local-dev-setup.md         # per-OS install + verification
     ├── onboarding.md              # guided first week for a new dev
     ├── deployment.md              # operational design (if productionized)
