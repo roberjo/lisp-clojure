@@ -57,11 +57,14 @@ serve-06:
 
 # End-to-end: EDI -> CL plist -> JSON -> XML.
 # Requires Python 3 on PATH.
+# Note: the parenthesized subshells each pop back; the outermost `cd
+# 02-x12-parser` is in effect for the trailing python3 invocation, so the
+# python script path must be relative to 02-x12-parser/.
 e2e:
 	@echo "=== Pipeline: EDI -> EDN -> JSON -> XML ==="
 	cd 02-x12-parser && $(SBCL) --script bin/emit-plist.lisp samples/synthetic/minimal-837d.edi \
 	  | (cd ../04-clojure-edi-transform && $(CLOJURE) -M:run-cli) \
-	  | python3 05-marklogic-docstore/scripts/from-json.py --multi
+	  | python3 ../05-marklogic-docstore/scripts/from-json.py --multi
 
 # Adjudicate the e2e-produced claim against the rule library.
 # Requires the full pipeline to be runnable.
