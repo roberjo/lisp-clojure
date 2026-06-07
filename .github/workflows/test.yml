@@ -94,6 +94,7 @@ jobs:
           context: 06-adjudis-core
           file: 06-adjudis-core/Dockerfile
           push: false
+          load: true               # load into docker daemon so `docker run` finds it
           tags: adjudis-core:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
