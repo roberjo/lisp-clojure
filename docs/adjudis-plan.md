@@ -125,28 +125,20 @@ Adjacent products: ClaimsXten (Change Healthcare), Cotiviti edits, Optum's claim
 
 ### Phase 3 — Productize (weeks 9–12)
 
-- [ ] Multi-tenant data model
-  - Per-tenant rule overlays (tenant X's rules layer on top of the global library)
-  - Per-tenant fee schedules + benefit plans
-  - Tenant isolation at the storage layer
-- [ ] HTTP API (Reitit or Pedestal)
-  - POST /adjudicate with API key + tenant id
-  - GET /explanations/:claim-id for retrieval
-  - WebSockets for streaming batch adjudication
-- [ ] AuthN/AuthZ
-  - API keys per tenant
-  - RBAC for the rule-authoring UI (analyst can edit scrubbing, admin can edit adjudication)
-  - Audit log of every privileged action
-- [ ] Web UI for rule authoring
-  - Simple React or HTMX frontend
-  - Rule library browser, edit-and-test workflow
-- [ ] Containerization + deploy
-  - Dockerfile, healthchecks, structured-JSON logs
-  - Prometheus metrics endpoint (per-rule fire counts, decision latencies, error rates)
-  - Helm chart for k8s deploy
-- [ ] CI/CD pipeline (GitHub Actions or similar)
-  - Test, lint, vulnerability scan, container build, deploy to staging
-  - Promotion to prod is manual + requires rule-replay sign-off
+- [x] Multi-tenant data model (per-tenant catalog overlays: add / override / remove)
+- [x] API keys per tenant (X-API-Key header → tenant resolution)
+- [x] Tenant isolation at the handler layer (each request resolves to its tenant's effective catalog; no shared mutable state in the engine path)
+- [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/catalog/:rule-id`, `/health`, `/version`
+- [x] Containerization (multi-stage Dockerfile, non-root runtime, HEALTHCHECK)
+- [x] CI/CD pipeline (GitHub Actions: test + container build + smoke test)
+- [ ] RBAC inside a tenant (analyst can edit scrubbing rules, admin can edit adjudication)
+- [ ] Audit log of every privileged action
+- [ ] Web UI for rule authoring (React or HTMX rule library browser + edit-and-test)
+- [ ] Prometheus metrics endpoint (per-rule fire counts, decision latencies, error rates)
+- [ ] Structured JSON logs with correlation IDs
+- [ ] Helm chart for k8s deploy
+- [ ] Per-tenant fee schedules + benefit plans (separate from rule overlays)
+- [ ] WebSockets for streaming batch adjudication
 
 ---
 

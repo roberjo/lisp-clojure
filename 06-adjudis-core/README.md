@@ -6,7 +6,7 @@ This is **MVP / Phase 1** of the platform described in [`../docs/adjudis-plan.md
 
 ## Status
 
-Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **39 tests, 105 assertions.**
+Green on Clojure 1.12.5 + Clara 0.24.0 + Java 24. **54 tests, 139 assertions.** CI green: https://github.com/roberjo/lisp-clojure/actions
 
 Phase 1 (MVP) shipped. Phase 2 features added incrementally:
 - ✅ Rule versioning (effective-from / effective-to + as-of replay)
@@ -20,8 +20,8 @@ Phase 3 early items now shipped:
 - ✅ HTTP API (Reitit + ring-jetty)
 - ✅ Uberjar build (tools.build) + Dockerfile
 - ✅ GitHub Actions CI running all five test suites + container build smoke test
-- ⏳ Multi-tenant overlays
-- ⏳ AuthN/AuthZ (API keys, RBAC)
+- ✅ Multi-tenant catalog overlays (add / override / remove on top of base)
+- ✅ API key auth (X-API-Key) with tenant resolution + isolation
 
 **Benchmark snapshot** (`make bench-06`):
 
@@ -155,16 +155,55 @@ PORT=8080 clojure -M:serve
 
 Endpoints:
 
-| Method | Path | Body | Returns |
+| Method | Path | Auth | Returns |
 |---|---|---|---|
-| GET | `/health` | — | `{"status":"ok"}` |
-| GET | `/version` | — | `{"engine-version":"…","catalog-version":"…"}` |
-| GET | `/catalog?as-of=YYYY-MM-DD` | — | active rules at the optional `as-of` date |
-| GET | `/catalog/:rule-id` | — | a single rule, or 404 |
-| POST | `/adjudicate` | `{"claim":…, "member":…, "as-of":…?}` | adjudication decision |
-| POST | `/shadow` | `{"claim":…, "member":…, "proposed-catalog":[…]}` | current/proposed/delta |
+| GET | `/health` | public | `{"status":"ok"}` |
+| GET | `/version` | public | `{"engine-version":"…","catalog-version":"…"}` |
+| GET | `/catalog?as-of=YYYY-MM-DD` | tenant | active rules for the tenant at the optional `as-of` date |
+| GET | `/catalog/:rule-id` | tenant | a single rule from the tenant's effective catalog, or 404 |
+| POST | `/adjudicate` | tenant | adjudication decision (against the tenant's effective catalog) |
+| POST | `/shadow` | tenant | current/proposed/delta |
 
 Validation errors return HTTP 400 with `{"error":"validation","details":{"missing":[…]}}`.
+
+### Multi-tenancy + API key auth
+
+The server runs in two modes:
+
+- **Single-tenant** (default): no auth, one global catalog.
+- **Multi-tenant**: set `TENANTS_FILE=path/to/tenants.edn`. Protected routes require an `X-API-Key` header that resolves to one of the configured tenants. The tenant's effective catalog = base ⊕ overlay where overlay is `{:add :override :remove}`.
+
+```bash
+# Multi-tenant smoke:
+TENANTS_FILE=resources/fixtures/tenants.edn PORT=8080 clojure -M:serve
+
+# Hit it (sample fixture keys; replace in real deployments):
+curl http://localhost:8080/health
+curl -H 'X-API-Key: akey-acme-dev-only-do-not-use-in-prod' http://localhost:8080/catalog
+```
+
+Tenant isolation: every protected handler computes the requesting tenant's effective catalog before calling the engine. No shared mutable state between tenants in the engine path. There are tests that adjudicate the same claim through two tenants and assert that Tenant A's custom rules do NOT appear in Tenant B's findings.
+
+Sample overlay shape ([`resources/fixtures/tenants.edn`](resources/fixtures/tenants.edn)):
+
+```clojure
+"acme-dental"
+{:name "ACME Dental Benefits"
+ :api-key "akey-acme-dev-only-do-not-use-in-prod"
+ :overlay
+ {:override [{:rule-id "DENTAL-ANNUAL-MAX-DEFAULT"
+              :params {:max-amount 1000.00}   ;; ACME is stricter
+              ...}]
+  :add      [{:rule-id "ACME-LARGE-SERVICE-CAP"
+              :params {:procedure-codes #{"D2740" ...}
+                       :threshold-amount 2000.00}
+              ...}]}}
+```
+
+Composition semantics:
+- `:add` introduces tenant-only rules.
+- `:override` replaces a shipped rule by id (override wins over remove if the id is in both).
+- `:remove` suppresses a shipped rule by id.
 
 ### Docker
 
@@ -262,8 +301,9 @@ MVP is CLI-only. Phase 3 adds the HTTP API + web rule-author UI. Doing it now wo
 - **Real CMS rule sources.** The rule library is synthetic, hand-curated; the synthetic generator stresses the engine but isn't real NCCI/MUE. Phase 2 continuation work.
 - **Bitemporal storage.** History is a flat list keyed by subscriber. Versioning + replay work via `as-of` in the engine, but full bitemporal queries ("what was the member's adjudicated spend as of June 1, with this catalog version?") need XTDB.
 - **Real eligibility (270/271).** Member coverage is a plain EDN record. Phase 2 will put a 270/271 adapter behind the eligibility check.
-- **Multi-tenant data isolation.** Single global catalog. Phase 3 adds per-tenant overlays.
-- **HTTP API + auth.** CLI only. Phase 3 puts a Reitit API in front.
+- **RBAC inside a tenant.** API keys identify tenants, not users; an analyst-vs-admin distinction inside a tenant is Phase 3.B.
+- **API key rotation / management UI.** Keys are in the EDN config; in production they'd be hashed + rotated through a key-management service.
+- **Web UI for rule authoring.** CLI only.
 
 ## Acceptance criteria
 
@@ -292,6 +332,8 @@ MVP is CLI-only. Phase 3 adds the HTTP API + web rule-author UI. Doing it now wo
 - [x] Uberjar build via tools.build
 - [x] Multi-stage Dockerfile, non-root runtime, healthcheck against `/health`
 - [x] GitHub Actions CI running all 5 project test suites + container build + smoke test
+- [x] Multi-tenant catalog overlays (add / override / remove composition)
+- [x] API key auth (X-API-Key header), tenant resolution, tenant isolation in handlers
 
 ## See also
 

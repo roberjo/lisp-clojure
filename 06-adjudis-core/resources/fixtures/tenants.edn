@@ -1,0 +1,39 @@
+;; Multi-tenant config for the MVP. Two tenants demonstrating overlay variety.
+;;
+;; In production this would not live in source — it'd be in a per-environment
+;; secrets store, with tenant rows in a database and api-key hashes (not raw).
+;; For the demo, inline EDN is the path of least friction.
+
+{:tenants
+ {;; Tenant A: a strict-policy dental benefits manager.
+  ;; Overrides the shipped annual max to $1000 (tighter), adds a custom rule
+  ;; denying any service over $2000.
+  "acme-dental"
+  {:name    "ACME Dental Benefits"
+   :api-key "akey-acme-dev-only-do-not-use-in-prod"
+   :overlay
+   {:override
+    [{:rule-id     "DENTAL-ANNUAL-MAX-DEFAULT"
+      :category    :annual-maximum
+      :description "ACME annual max is $1,000 (tighter than default)."
+      :severity    :pending
+      :reason-code "ANN-MAX-EXCEEDED"
+      :params      {:max-amount 1000.00 :benefit-period :calendar-year}
+      :citation    {:source "ACME plan contract section 5.1"}}]
+    :add
+    [{:rule-id     "ACME-LARGE-SERVICE-CAP"
+      :category    :pre-auth-required
+      :description "Any service above $2,000 requires pre-auth at ACME."
+      :severity    :pending
+      :reason-code "ACME-PREAUTH"
+      :params      {:procedure-codes #{"D2740" "D2750" "D2790" "D2792" "D7240"}
+                    :threshold-amount 2000.00}
+      :citation    {:source "ACME plan contract section 7.3"}}]}}
+
+  ;; Tenant B: a permissive carrier.
+  ;; Removes the shipped sealant-age rule (they cover sealants regardless).
+  "beta-carrier"
+  {:name    "Beta Carrier"
+   :api-key "akey-beta-dev-only-do-not-use-in-prod"
+   :overlay
+   {:remove #{"DENTAL-SEALANT-AGE"}}}}}
