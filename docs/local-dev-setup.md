@@ -13,12 +13,15 @@ Get a clean machine to `make test` (or `./test-all.ps1`) green. Verified flows f
 |---|---|---|
 | SBCL | Common Lisp implementation | projects 01, 02, 03 |
 | Quicklisp | CL library manager (FiveAM, ASDF discovery) | projects 01, 02, 03 |
-| Clojure CLI (or deps.clj) | run deps.edn projects | project 04 |
-| Java 21+ | JVM for Clojure | project 04 |
+| Clojure CLI (or deps.clj) | run deps.edn projects | projects 04, 06 |
+| Java 21+ | JVM for Clojure | projects 04, 06 |
 | BaseX 12.0 | XQuery engine | project 05 |
 | Python 3.10+ | JSON → XML bridge | project 05 |
+| Docker (optional) | build/run the project-06 container image | project 06 |
 | `make` (optional) | runs `Makefile`. Windows users can use `test-all.ps1` instead | convenience |
 | Git | source control | always |
+
+Project 06 carries its own JVM dep list (Clara, Reitit + ring-jetty, Cheshire, logback + logstash encoder, iapetos). All resolved automatically on first `clojure -X:test` or `clojure -M:serve` — the only thing you need on PATH is `clojure` + `java`.
 
 ---
 
@@ -223,13 +226,14 @@ SLY is the modern fork of SLIME; both work. SLY's REPL handling is nicer on Wind
 After everything is installed, from the repo root:
 
 ```bash
-make test          # all four suites
-make e2e           # end-to-end pipeline
+make test               # all five test suites
+make e2e                # EDI → EDN → JSON → XML pipeline
+make adjudicate-demo    # also runs through project 06 adjudication
 ```
 
 (Windows: `.\test-all.ps1`)
 
-Expected: 53 assertions across 36 tests, all green. The e2e target prints a fully-formatted XML claim document on stdout.
+Expected: ~150 assertions across ~95 tests, all green. The `e2e` target prints a fully-formatted XML claim document on stdout. The `adjudicate-demo` target prints a decision JSON with rule citations.
 
 If a single project fails, run just that one:
 
@@ -238,6 +242,30 @@ make test-01     # CL kvstore
 make test-02     # X12 parser  (depends on 03)
 make test-03     # DSL + CLOS
 make test-04     # Clojure transform
+make test-06     # Adjudis core
+```
+
+Run the project-06 server locally to see structured logs + the API:
+
+```bash
+make serve-06                              # single-tenant (no auth)
+# in another shell:
+curl http://localhost:8080/health
+curl http://localhost:8080/metrics | head -30
+
+# Or multi-tenant mode (uses the shipped fixture):
+cd 06-adjudis-core && \
+  TENANTS_FILE=resources/fixtures/tenants.edn PORT=8080 clojure -M:serve
+# in another shell:
+curl -H 'X-API-Key: akey-acme-dev-only-do-not-use-in-prod' \
+  http://localhost:8080/catalog | jq '.count, .tenant-id'
+```
+
+Build the standalone artifacts:
+
+```bash
+make uberjar-06         # → 06-adjudis-core/target/adjudis-core-0.1.0-standalone.jar
+make docker-build-06    # → docker image adjudis-core:0.1.0 (requires Docker)
 ```
 
 ---
@@ -253,6 +281,9 @@ make test-04     # Clojure transform
 | `Permission denied` running scripts on Linux | new files lack +x | `chmod +x scripts/load.sh scripts/from-json.py` |
 | Tests pass but `make e2e` produces no output | shell quoting around the pipe; PowerShell vs cmd.exe differ | use the explicit pipeline in [README](../README.md#cross-project-pipeline-verified-end-to-end) |
 | Git push asks for password | git credential helper not set | `gh auth setup-git` if you use `gh`, otherwise GitHub PAT in credential manager |
+| Project 06 server takes 30–60s to start | cold JVM + Clara session compile | one-time per process; subsequent `/adjudicate` requests are sub-100ms |
+| Project 06 uberjar build takes 10+ minutes | you're using AOT compilation (Clara generates thousands of inner classes) | the shipped `build.clj` is non-AOT for this reason; don't switch it back |
+| Project 06 logs are an unstructured wall of text | something other than logback resolved as the SLF4J provider | check `deps.edn` includes `ch.qos.logback/logback-classic` and `resources/logback.xml` exists |
 
 ---
 

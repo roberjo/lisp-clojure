@@ -4,7 +4,9 @@ The month-by-month plan, broken out from the top-level README so it can evolve i
 
 ## Snapshot (current state)
 
-All five project skeletons + working implementations + green test suites exist. The plan below now serves as a depth-roadmap: where to invest beyond the working baseline.
+All five original project skeletons + working implementations + green test suites exist. **Project 06 (Adjudis) was added beyond the original plan** and now carries the most surface area in the repo — see `adjudis-plan.md` for the strategy and the project's own README for the implementation.
+
+The plan below serves as a depth-roadmap: where to invest beyond the working baseline.
 
 | Project | Baseline shipped | Next depth investments |
 |---|---|---|
@@ -13,6 +15,7 @@ All five project skeletons + working implementations + green test suites exist. 
 | 03 macros/CLOS | ✅ define-segment + APPEND combination | add a `define-loop` macro for X12 loop structure; demonstrate `:around` methods more substantively |
 | 04 Clojure | ✅ deps.edn + Malli + transducers | core.async pipeline; clojure.spec.gen.alpha for generative tests |
 | 05 docstore | ✅ BaseX + 3 queries + bridge | MarkLogic deployment (developer license); add 270/271 eligibility round-trip; index tuning experiments |
+| 06 Adjudis | ✅ Clara engine + versioning + shadow-mode + author CLI + HTTP API + multi-tenant + observability | XTDB swap; OpenTelemetry traces; real CMS NCCI/MUE ingestion; RBAC inside a tenant; web rule-author UI |
 
 
 
@@ -51,6 +54,27 @@ All five project skeletons + working implementations + green test suites exist. 
 - [ ] Document-store model and XQuery basics — pick a textbook chapter and work through it.
 - [ ] Migrate project 05 to a MarkLogic developer license deployment.
 - [ ] **At least one merged PR** to a Quicklisp-listed Common Lisp library. Identify the target library by start of month 5 — don't leave this for the last week.
+
+## Beyond the original plan — Project 06 (Adjudis)
+
+Not part of the original 6-month plan. Added when the natural next step was a productized SaaS layer on top of the existing pipeline. Full design in [`adjudis-plan.md`](adjudis-plan.md); per-project README at [`06-adjudis-core/`](../06-adjudis-core/).
+
+Shipped:
+
+- [x] Clara forward-chaining rule engine (6 rule categories, 11 shipped rules)
+- [x] Data-driven rule catalog (EDN; `:add`/`:override`/`:remove` overlays)
+- [x] Rule versioning with effective-from/to + `as-of` historical replay
+- [x] Shadow-mode adjudication (current vs proposed catalog with delta)
+- [x] Author CLI: validate / dry-run / diff / shadow
+- [x] Synthetic catalog generator + latency benchmark (hits the <100ms p99 SLO on 500-rule catalog)
+- [x] HTTP API (Reitit + ring-jetty): `/adjudicate`, `/shadow`, `/catalog`, `/health`, `/version`, `/metrics`
+- [x] Non-AOT uberjar (tools.build) + multi-stage Dockerfile + GitHub Actions CI (test + container build + `/health` smoke test)
+- [x] Multi-tenant catalog overlays + API-key auth + tenant isolation
+- [x] Structured JSON logs with correlation IDs (logback + logstash encoder)
+- [x] Audit log (sibling logger routed to its own appender for HIPAA-compliant retention)
+- [x] Prometheus metrics endpoint (JVM + HTTP latency + adjudis-specific counters)
+
+What this proves beyond the original plan: SaaS-product engineering, rule-engine design, operational concerns at production-shape (auth, tenant isolation, observability), and the seam from "data-pipeline thinking" to "product thinking."
 
 ## Tracking
 

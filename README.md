@@ -87,7 +87,7 @@ lisp-edi-portfolio/
 ├── 03-cl-macros-clos/             # macros + CLOS abstraction (used by 02)
 ├── 04-clojure-edi-transform/      # Clojure pipeline transforming parsed EDI
 ├── 05-marklogic-docstore/         # BaseX/XQuery doc-store modeling
-├── 06-adjudis-core/               # Clara-based claim adjudication engine (MVP)
+├── 06-adjudis-core/               # Clara-based claim adjudication engine + HTTP API + multi-tenant SaaS shell
 └── docs/
     ├── architecture.md            # technical deep dive
     ├── adjudis-plan.md            # full 3-month plan for project 06
@@ -134,6 +134,11 @@ lisp-edi-portfolio/
 **Deliverable:** Schema/document design for storing EDI transactions as XML/JSON documents, a set of XQuery/XPath queries (eligibility lookups, claim status), and notes on indexing. Use MarkLogic Community Edition or a documented equivalent.
 **Showcases:** Document modeling, XQuery, connecting the data model back to the EDI domain.
 
+### 06 — Adjudis core *(beyond the original plan)*
+**Goal:** Productize the EDI pipeline into a SaaS-shaped claim-adjudication platform — the natural next layer above the parser + transformer + docstore.
+**Deliverable:** A Clara-based forward-chaining rules engine with a versioned EDN rule catalog, full rule-citation provenance on every decision, shadow-mode A/B replay, a rule-author CLI, an HTTP API (Reitit + ring-jetty), uberjar build + multi-stage Dockerfile, multi-tenant catalog overlays with API-key auth, structured JSON logging + correlation IDs, Prometheus metrics, and an audit log. CI builds the container image and smoke-tests the running server.
+**Showcases:** Production-grade Clojure architecture; rule-engine design; SaaS operational concerns (auth, tenant isolation, observability); the seam from data-pipeline thinking to product thinking. Full development plan in [docs/adjudis-plan.md](docs/adjudis-plan.md).
+
 ---
 
 ## Learning plan (6 months)
@@ -171,10 +176,11 @@ A realistic sequence. Adjust pace to your available hours; the ordering matters 
 | Requirement | Where this repo addresses it |
 |---|---|
 | 3+ yrs Common Lisp | Projects 01–03 demonstrate idiomatic CL, macros, CLOS, and a substantial domain application. Open-source CL contributions add real-world depth. |
-| 5+ yrs software development | Existing professional experience (frame it in the application); this repo evidences current, active engineering breadth. |
-| 2+ yrs large codebase, upstream/downstream dependencies | Project 02 is explicitly the integration seam between clearinghouses and internal systems; open-source contribution shows working within an existing large codebase. |
-| Lisp / Clojure / MarkLogic | Projects 02–03 (Lisp), 04 (Clojure), 05 (MarkLogic). |
-| Healthcare EDI domain | X12 837/835/270/271 throughout; `docs/x12-primer.md`. |
+| 5+ yrs software development | Existing professional experience (frame it in the application); this repo evidences current, active engineering breadth. Project 06 demonstrates end-to-end SaaS-product engineering (HTTP API, container, CI, multi-tenant auth, observability). |
+| 2+ yrs large codebase, upstream/downstream dependencies | Project 02 is explicitly the integration seam between clearinghouses and internal systems; project 06 consumes project 04's JSON contract while exposing its own HTTP contract to clients; open-source contribution shows working within an existing large codebase. |
+| Lisp / Clojure / MarkLogic | Projects 02–03 (Lisp), 04 + 06 (Clojure), 05 (MarkLogic/BaseX). |
+| Healthcare EDI domain | X12 837/835/270/271 throughout; `docs/x12-primer.md`. Project 06 layers payer-side adjudication rules on top. |
+| Production / operational thinking | Project 06: structured JSON logs with correlation IDs, audit log, Prometheus metrics, HIPAA-aware tenant isolation. CI (`.github/workflows/test.yml`) tests + builds + smoke-tests the container on every push. |
 
 ---
 

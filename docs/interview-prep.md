@@ -32,7 +32,8 @@ A working set of answers to the questions a senior Lisp interview is likely to s
 
 - Syntax and the REPL workflow transfer immediately.
 - What doesn't: macro hygiene model (Clojure's syntax-quote auto-namespacing vs. CL's package system + manual `gensym`), mutability defaults (Clojure is persistent-default), the JVM ecosystem (deps, classpath, GC pressure).
-- Project 04 is the evidence. File: [`04-clojure-edi-transform/src/edi/transform/core.clj`](../04-clojure-edi-transform/src/edi/transform/core.clj). Specifically the transducer use (`all-service-lines`) and Malli schemas as data — both more idiomatic than the CL equivalents would be.
+- Project 04 is the evidence for the basic Clojure-fluency answer. File: [`04-clojure-edi-transform/src/edi/transform/core.clj`](../04-clojure-edi-transform/src/edi/transform/core.clj). Specifically the transducer use (`all-service-lines`) and Malli schemas as data — both more idiomatic than the CL equivalents would be.
+- Project 06 is the evidence for **production-shape** Clojure. Reitit routing, Clara rules engine (with type-driven dispatch via defrecord), tools.build uberjar, logback + iapetos, multi-tenant data model. The same language can do both "small data pipeline stage" (project 04) and "full SaaS-shaped service" (project 06).
 - Concrete CL→Clojure gotcha found during build: keyword case mismatch (`:TYPE` vs `:type`) at the EDN boundary. Documented in [x12-primer.md](x12-primer.md#cl-keyword-case--clojure-edn-mismatch).
 
 ## "Why is a document store appropriate for EDI?"
@@ -49,9 +50,34 @@ A working set of answers to the questions a senior Lisp interview is likely to s
 
 ## "Tell me about a production system you've operated"
 
-- The portfolio doesn't deploy anything, so don't pretend.
-- BUT: [`docs/deployment.md`](deployment.md) and [`docs/monitoring.md`](monitoring.md) show the operational model I'd propose if this were productionized — including HIPAA-specific concerns (PHI in logs, BAA chain, encryption posture, audit retention).
+- The portfolio doesn't deploy anything to a real environment, so don't pretend.
+- BUT: project 06 ships with most of the productionization scaffolding — Dockerfile, GitHub Actions CI (test + container build + `/health` smoke test on every push), structured JSON logs + correlation IDs + audit log via logback, Prometheus metrics at `/metrics`, multi-tenant isolation, healthchecks. Walk through [`06-adjudis-core/README.md`](../06-adjudis-core/README.md) live.
+- For the broader pipeline (projects 02–05), [`docs/deployment.md`](deployment.md) and [`docs/monitoring.md`](monitoring.md) show the operational model I'd propose if those were productionized to the same shape — including HIPAA-specific concerns (PHI in logs, BAA chain, encryption posture, audit retention).
 - Point at the synthetic-canary section in monitoring.md as the answer to "how would you know if the pipeline silently broke?"
+
+## "Show me a rules engine you've worked with"
+
+- Project 06's adjudication engine: Clara (forward-chaining Rete-based) productions in [`06-adjudis-core/src/adjudis/rules.clj`](../06-adjudis-core/src/adjudis/rules.clj).
+- Architectural punchline: **rule productions are code; rule instances are data.** Six productions (one per category — frequency, age-appropriate, pre-auth, eligibility, annual-max, fee-schedule), N data rules in `resources/rule-catalog/*.edn`. Adding a specific rule is a single map; adding a category is a new production.
+- Why this shape: real customers have clinical-admin staff editing rules. The data path is what they edit; the code path is owned by engineering.
+- Performance: hits sub-100ms p99 on a 500-rule catalog (`make bench-06`). Clara's alpha-network pruning is why this scales sub-linearly.
+- Versioning + shadow mode: every rule carries optional effective-from/to; the engine accepts an `as-of` parameter for historical replay. Shadow mode (`/shadow` endpoint, `adjudis.author shadow` CLI) runs a claim against current AND proposed catalogs and returns both decisions + delta, so PMs A/B-test changes against real historical claims before promoting.
+
+## "Walk me through a multi-tenant architecture you've designed"
+
+- Project 06's overlay model: every tenant has an EDN overlay with `:add`, `:override`, `:remove`. The composition function ([`tenants/apply-overlay`](../06-adjudis-core/src/adjudis/tenants.clj)) computes the effective catalog at request time: `(base - remove - override-ids) + override + add`.
+- Tenant isolation is **by data flow, not by trust**: the engine takes the effective catalog as an argument. The engine itself doesn't know about tenants. A regression would be visible in the [`tenant-isolation-acme-rule-doesnt-leak-to-beta`](../06-adjudis-core/test/adjudis/api_test.clj) test.
+- Auth: API-key middleware resolves `X-API-Key` → tenant; protected routes get `::tenant` in the request map; handlers compute the tenant's effective catalog from it. Public routes (`/health`, `/version`, `/metrics`) skip auth.
+- HIPAA-relevant: a multi-tenant data leak in healthcare is a reportable breach. The architecture makes the leak hard to write because there's no global mutable catalog the engine could accidentally see.
+
+## "Walk me through your observability story"
+
+- Project 06 is the live evidence; [`docs/monitoring.md`](monitoring.md) is the broader plan.
+- Every HTTP request gets a correlation ID (`X-Request-Id` echoed in response; same id appears as `request_id` on every log line for that request via SLF4J MDC). Every authenticated request also gets `tenant_id` on the log lines.
+- Two logger streams: application logs and a dedicated `audit` logger (own appender, separate retention — designed for the 6yr+ HIPAA audit-trail requirement).
+- Metrics: iapetos at `/metrics` in Prometheus exposition format. Adjudis-specific counters (auth attempts by outcome, adjudications by tenant+verdict, findings by category+severity), histograms for HTTP latency and adjudication duration, JVM defaults.
+- No PHI in logs. Claim ids and structural facts only.
+- What's deliberately not yet shipped: OpenTelemetry traces (sketched but not implemented).
 
 ## Questions to ask them
 

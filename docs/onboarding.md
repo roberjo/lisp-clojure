@@ -25,17 +25,38 @@ The repo has more code than you need to internalize on day 1. This order minimiz
 5. **[`02-x12-parser/src/segments-837d.lisp`](../02-x12-parser/src/segments-837d.lisp)** — see the macro in real use.
 6. **[`02-x12-parser/src/parser.lisp`](../02-x12-parser/src/parser.lisp)** — the actual envelope walker. Small.
 7. **[`04-clojure-edi-transform/src/edi/transform/core.clj`](../04-clojure-edi-transform/src/edi/transform/core.clj)** — the transducer pipeline.
-8. **Whatever you need.** Project 05 and project 01 are independent — read them when you have a reason.
+8. **[`06-adjudis-core/README.md`](../06-adjudis-core/README.md)** — the SaaS-shaped adjudication engine; then dip into `src/adjudis/rules.clj` (Clara productions), `src/adjudis/tenants.clj` (overlay composition), and `src/adjudis/api.clj` (Reitit routes + auth + observability middleware).
+9. **Whatever you need.** Project 05 and project 01 are independent — read them when you have a reason.
 
-Budget: half a day. If it takes longer, something in the docs is unclear — file an issue.
+Budget: half a day for steps 1–7, another half-day if you want to internalize project 06 (it's the largest project by surface area). If it takes longer, something in the docs is unclear — file an issue.
 
 ### 2. Run the pipeline end-to-end
 
 ```bash
-make e2e
+make e2e               # EDI → EDN → JSON → XML
+make adjudicate-demo   # …then through project 06's rule engine to a decision JSON
 ```
 
-Watch the data shape change at each stage. The intermediate forms (EDN, JSON, XML) are the contracts between languages; understanding the shape is more important than memorizing function names.
+Watch the data shape change at each stage. The intermediate forms (EDN, JSON, decision JSON, XML) are the contracts between languages and components; understanding the shape is more important than memorizing function names.
+
+### 3. Run the HTTP server for 30 seconds
+
+```bash
+make serve-06   # or: cd 06-adjudis-core && clojure -M:serve
+# (in another terminal:)
+curl http://localhost:8080/health
+curl http://localhost:8080/version
+curl http://localhost:8080/metrics | head
+```
+
+Then with multi-tenant mode:
+
+```bash
+cd 06-adjudis-core && TENANTS_FILE=resources/fixtures/tenants.edn PORT=8080 clojure -M:serve
+curl -H 'X-API-Key: akey-acme-dev-only-do-not-use-in-prod' http://localhost:8080/catalog
+```
+
+Watch the structured JSON log lines that the server emits — every line carries `request_id`, and every authenticated line also carries `tenant_id`.
 
 ---
 
@@ -96,6 +117,22 @@ Suppose downstream wants Avro instead of JSON. In [`04-clojure-edi-transform/src
 2. Add a `:run-cli-avro` alias to `deps.edn`.
 3. Write a test that parses the Avro back to a map and asserts shape.
 
+### Option D — add a new tenant (project 06)
+
+1. Open [`06-adjudis-core/resources/fixtures/tenants.edn`](../06-adjudis-core/resources/fixtures/tenants.edn).
+2. Add a new entry under `:tenants`: id, name, api-key, and an `:overlay` with any combination of `:add`, `:override`, `:remove`.
+3. Add a test in `test/adjudis/api_test.clj` that authenticates with the new key and asserts the overlay takes effect.
+4. `make test-06`.
+
+### Option E — add a new rule category (project 06)
+
+1. Add a new `defrule` to [`06-adjudis-core/src/adjudis/rules.clj`](../06-adjudis-core/src/adjudis/rules.clj). Pattern-match on `CatalogRule` with the new category.
+2. Add a new EDN file under `06-adjudis-core/resources/rule-catalog/` and register it in `catalog.clj`'s `catalog-files` list.
+3. Add the category to `author.clj`'s `known-categories` set.
+4. Test it.
+
+The general principle: **rule productions are code; rule instances are data.** New specific rules cost nothing; new categories cost one production + one catalog file + one validator entry.
+
 ---
 
 ## Day 3+: where to look when something breaks
@@ -108,6 +145,11 @@ Suppose downstream wants Avro instead of JSON. In [`04-clojure-edi-transform/src
 | Clojure side gets `:type :unknown` for everything | the CL emitter's `*print-case*` binding — should be `:downcase`. See `bin/emit-plist.lisp` |
 | XQuery returns empty for clearly-loaded data | namespace mismatch in the XML; every doc must declare `xmlns="urn:x12:837d"` because every query uses the `c:` prefix |
 | Test suite passes locally but CI red | line endings on Windows (`.gitattributes` would fix; not added because it hasn't bitten yet) |
+| Project 06 rule "doesn't fire" | confirm catalog file is registered in `catalog.clj/catalog-files`; then check rule's effective-from/effective-to against the claim's service-date; then run `clojure -M:author dry-run` to step through |
+| Project 06 returns 401 unexpectedly | tenants registry is loaded but no `X-API-Key`. Either set the header or unset `TENANTS_FILE` env var |
+| Project 06 metrics endpoint empty for adjudis_*  | counters only appear after the first event of that kind. Drive a request through `/adjudicate` then re-scrape |
+| Project 06 `/catalog` returns different rules per tenant | working as intended — that's the multi-tenant overlay. Inspect with `clojure -M:author diff` between catalogs |
+| `make e2e` fails in CI but not locally | python path; remember the `cd 02-x12-parser` is in effect for the trailing pipe stage in Make's recipe (path must be relative to that) |
 
 ---
 
@@ -158,6 +200,9 @@ The fastest way to internalize this repo is to remember: **each stage is a pure 
 - 04 = `EDN → normalized-claim JSON`
 - 05 (Python bridge) = `JSON → namespaced XML`
 - 05 (XQuery) = `XML doc set + parameters → result XML`
+- 06's engine = `(claim, member, catalog, history, as-of?) → decision`
+- 06's catalog overlay = `(base-catalog, overlay) → effective-catalog`
+- 06's HTTP layer = `request → tenant → effective-catalog → engine → decision → JSON response`
 
 Everything else is plumbing.
 

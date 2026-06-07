@@ -1,6 +1,6 @@
 # Deployment
 
-> **Scope honesty.** This repo is a portfolio. Nothing is deployed; nothing in here is binding on a real system. This document is the deployment design a senior engineer would propose IF this pipeline were productionized for a real EDI workload — it shows the thinking, not finished infrastructure.
+> **Scope honesty.** This repo is a portfolio. Nothing is deployed to a production environment. **What HAS been productionized in shape** (CI, container, multi-tenant HTTP API, observability, healthchecks) is in project 06 — see its [README](../06-adjudis-core/README.md) and [adjudis-plan.md](adjudis-plan.md). This document is the broader deployment design — projects 02–06 operating as a real EDI pipeline — that a senior engineer would propose if the rest were productionized to the same shape.
 
 The thinking matters because EDI processing is operationally non-trivial: clearinghouse SLAs, HIPAA compliance, batch sizes that swing 100×, downstream adjudication systems that hate retries. A correct local implementation says nothing about whether you understand the operational picture.
 
@@ -33,33 +33,37 @@ The thinking matters because EDI processing is operationally non-trivial: cleari
                   │ transform workers   │  N instances, autoscaled.
                   │ project 04 (JVM)    │  emits one JSON / claim
                   └──────────┬──────────┘
-                             │
-                  ┌──────────┴──────────┐
-                  ▼                     ▼
-       ┌─────────────────┐    ┌─────────────────┐
-       │ MarkLogic /     │    │ analytics sink  │
-       │ BaseX cluster   │    │ (warehouse)     │
-       │ project 05      │    │                 │
-       └─────────────────┘    └─────────────────┘
+                             │ message queue
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+   ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+   │ MarkLogic /     │ │ adjudis-core    │ │ analytics sink  │
+   │ BaseX cluster   │ │ project 06      │ │ (warehouse)     │
+   │ project 05      │ │ HTTP, multi-    │ │                 │
+   │                 │ │ tenant, with    │ │                 │
+   │                 │ │ Prometheus      │ │                 │
+   └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
-Notably absent: a single "EDI service" that does everything in one process. Each stage scales independently, fails independently, and can be replaced independently.
+Notably absent: a single "EDI service" that does everything in one process. Each stage scales independently, fails independently, and can be replaced independently. Project 06 has its own deployment shape (HTTP service, container, healthcheck) and is the only stage that today ships with the operational scaffolding (container, CI, structured logs, metrics) already in place — see its [README](../06-adjudis-core/README.md).
 
 ### Packaging per project
 
 | Project | Artifact | How built |
 |---|---|---|
 | 02 + 03 (CL) | `parser` binary (SBCL core image with the loaded systems) | `sb-ext:save-lisp-and-die` from a build script — startup goes from ~300ms to <50ms |
-| 04 (Clojure) | uberjar | `clojure -T:build uber` (would add `build.clj` + `tools.build`) |
+| 04 (Clojure) | uberjar | `clojure -T:build uber` (would mirror project 06's `build.clj` + `tools.build`) |
 | 05 (XQuery) | `.xqy` files in the deploy bundle + index-setup script | filesystem deploy onto MarkLogic; or REST-deploy |
 | Python bridge | single-file `from-json.py` | shipped as-is, with `python:3.12-slim` base image |
+| **06 (adjudis)** | **uberjar + container image** | **`make uberjar-06` → `make docker-build-06`. Already real:** non-AOT uberjar via `tools.build`, multi-stage Dockerfile (clojure-tools-deps → JRE alpine), non-root runtime, `HEALTHCHECK` against `/health`, sub-200MB image. The GHA workflow builds + smoke-tests on every push. |
 
-Container images are the natural unit; one Dockerfile per stage, sharing nothing except a base image.
+Container images are the natural unit; one Dockerfile per stage, sharing nothing except a base image. Project 06 is the worked example; the others would follow the same shape.
 
 ### Runtime
 
 - **CL parser**: long-running. Reads from queue, parses, emits to next queue. Memory bound is one EDI file at a time (call it 10–100MB upper); CPU bound on segment-split.
 - **Clojure transformer**: long-running JVM. Pre-warmed, stays hot. Horizontal scale by partition key (interchange control number → consistent hash).
+- **Adjudis (project 06)**: long-running JVM HTTP service behind a load balancer. Stateless apart from the history store (currently in-memory, XTDB swap in Phase 2 of [adjudis-plan.md](adjudis-plan.md)). Horizontal scale based on request rate; each instance is independent because tenant resolution is per-request.
 - **BaseX / MarkLogic**: persistent cluster, replicated. Read-heavy; writes via bulk `ADD` from the transformer.
 
 The Python bridge isn't a runtime component in production — it's a debugging tool. Production would emit XML directly from Clojure (data.xml is mature enough, and the namespace boilerplate is a one-time cost).
@@ -74,9 +78,12 @@ The Python bridge isn't a runtime component in production — it's a debugging t
 |---|---|---|
 | Queue endpoints, credentials | env vars + secrets manager | rotates per-env |
 | BaseX / MarkLogic connection | env vars | per-env |
-| Log level | env var `LOG_LEVEL` | tunable without redeploy |
+| Log level | logback.xml (deploy-time) or env override | tunable without redeploy if you wire `<jmxConfigurator>` |
+| **Project 06 `PORT`** | env var (default 8080) | container orchestrator may need a non-default port |
+| **Project 06 `TENANTS_FILE`** | env var | absent → single-tenant mode (no auth); present → multi-tenant + X-API-Key required |
+| **Project 06 tenant API keys** | EDN file today; secrets manager + hashed keys in real prod | rotate without code change |
 | Feature flags (e.g. "enable 835 parsing") | dynamic config service | toggle without redeploy |
-| Hardcoded today | the segment definitions in [`02-x12-parser/src/segments-837d.lisp`](../02-x12-parser/src/segments-837d.lisp) | spec is part of the code; "configuring" segment definitions at runtime would be a bug |
+| Hardcoded today | the segment definitions in [`02-x12-parser/src/segments-837d.lisp`](../02-x12-parser/src/segments-837d.lisp) and project 06's shipped rule catalog | spec is part of the code; per-tenant overrides go through the overlay mechanism |
 
 ### Secrets
 
@@ -109,39 +116,21 @@ git push ─▶ CI ─┬─▶ make test          (Linux runner with full toolc
                   deploy to prod
 ```
 
-The repo's actual CI workflow is at [`.github/workflows/test.yml`](../.github/workflows/test.yml). Outline:
+The repo's actual CI workflow is at [`.github/workflows/test.yml`](../.github/workflows/test.yml) and runs on every push and PR. Two jobs:
 
-```yaml
-name: test
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install SBCL + Quicklisp
-        run: |
-          sudo apt-get install -y sbcl
-          curl -O https://beta.quicklisp.org/quicklisp.lisp
-          sbcl --non-interactive --load quicklisp.lisp \
-               --eval '(quicklisp-quickstart:install)' \
-               --eval "(let ((ql-util::*do-not-prompt* t))(ql:add-to-init-file))"
-      - uses: DeLaGuardo/setup-clojure@13.1
-        with: { cli: 1.12.5.1517 }
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
-      - name: Install BaseX
-        run: |
-          curl -L -o basex.zip https://files.basex.org/releases/12.0/BaseX120.zip
-          sudo unzip -q basex.zip -d /opt
-          sudo ln -sf /opt/basex/bin/basex /usr/local/bin/basex
-      - run: make test
-      - run: make e2e
-```
+- **All five project test suites** — installs SBCL+QL, Clojure CLI, Java 21, BaseX 12; runs `make test` then `make e2e`; informational `make bench-06`. Caches `~/.m2` and `~/.gitlibs` for fast re-runs.
+- **Build adjudis-core container** — depends on the first job. Uses `docker/build-push-action` with `load: true` so the built image is in the daemon's local store. Runs the container, polls `/health` for up to 90s, asserts `/version` responds, tears down.
+
+Two real bugs CI caught and forced fixes for (commits `dd2912d`, `0823a08`):
+
+1. `make e2e`'s python3 step used the wrong relative path. The leading `cd 02-x12-parser` in the recipe stays in effect for the trailing pipe stage; the path needs `../05-marklogic-docstore/...`, not `05-marklogic-docstore/...`. Worked locally only because the local pipeline tests used explicit absolute paths.
+2. `docker/build-push-action` with `push: false` writes to the buildkit cache, not the docker daemon. Adding `load: true` imports the image so `docker run` finds it.
 
 ### Rollback strategy
 
-- **CL parser / Clojure transformer**: deploy as immutable container tags. Rollback = repoint the service to the previous tag. Sub-minute.
+- **CL parser / Clojure transformer / adjudis (project 06)**: deploy as immutable container tags. Rollback = repoint the service to the previous tag. Sub-minute.
+- **Adjudis rule catalog changes**: use shadow mode FIRST (`/shadow` endpoint or `clojure -M:author shadow`) to A/B-test the proposed catalog against historical claims. Promotion is a separate step from deploy — the engine version doesn't change; just the catalog data changes. If shadow surfaces unexpected verdict flips, fix and re-run; only promote when the delta matches intent.
+- **Adjudis tenant overlay changes**: per-tenant overlays compose at request time. A bad overlay only affects one tenant. Roll back by reverting the overlay file in the tenants registry; takes effect on next request.
 - **BaseX schema / XQuery changes**: trickier. Queries are versioned alongside the data; a query that depends on a new index can't run until the index is built. Deploy ordering:
   1. Build new index (online, BaseX supports this).
   2. Deploy new query files.
@@ -218,9 +207,10 @@ Order-of-magnitude only:
 
 ## What's NOT in this design
 
-- **In-line ML model scoring**. If fraud-detection or auto-adjudication ML enters the picture, it goes in a separate service that consumes the JSON intermediate. Don't add it to the transformer.
-- **A real-time eligibility API as the only path**. EDI 270/271 is batch by tradition; a real-time JSON API is a separate concern with different SLAs.
+- **In-line ML model scoring**. If fraud-detection or auto-adjudication ML enters the picture, it goes in a separate service that consumes either the JSON intermediate or adjudis's decision output. Don't add it to the transformer or to the rules engine.
+- **A real-time eligibility API as the only path**. EDI 270/271 is batch by tradition; a real-time JSON API is a separate concern with different SLAs. Adjudis's `/adjudicate` endpoint is a sync API but for adjudication, not eligibility check.
 - **Multi-region active-active**. EDI workflows are timezone-bounded by clearinghouse business hours; active-passive is sufficient.
+- **A web UI for rule authoring**. Phase 3 item, see [adjudis-plan.md](adjudis-plan.md). The author CLI fills the immediate gap.
 
 ---
 

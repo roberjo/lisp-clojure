@@ -1,6 +1,8 @@
 # Architecture
 
-A technical deep dive into how the five projects fit together. Companion to per-project READMEs; assume you've read the top-level `README.md` and skimmed each project's README.
+A technical deep dive into how the six projects fit together. Companion to per-project READMEs; assume you've read the top-level `README.md` and skimmed each project's README.
+
+The original five projects form a unix-style data pipeline (EDI → EDN → JSON → XML). Project 06 sits parallel to that pipeline as a SaaS-shaped adjudication engine consuming the same JSON contract.
 
 ---
 
@@ -67,19 +69,25 @@ A technical deep dive into how the five projects fit together. Companion to per-
 
 Project 01 (`kvstore`) is intentionally outside this flow. It exists to demonstrate the CL toolchain shape (ASDF, packages, generics, FiveAM) without coupling that demonstration to X12.
 
-Project 06 (`adjudis-core`) is a parallel sink off the JSON intermediate: instead of (or in addition to) loading into a document store, claims are run through a Clara-based rules engine that emits an adjudication decision with full rule-citation provenance. It's the MVP of the platform documented in [adjudis-plan.md](adjudis-plan.md). Phase 2 and early Phase 3 (HTTP API, container, CI) have shipped.
+Project 06 (`adjudis-core`) is a parallel sink off the JSON intermediate: instead of (or in addition to) loading into a document store, claims are run through a Clara-based rules engine that emits an adjudication decision with full rule-citation provenance. It has grown well beyond the MVP described in [adjudis-plan.md](adjudis-plan.md) — Phase 1 (engine), Phase 2 (versioning, shadow-mode, author CLI, benchmark), and most of Phase 3 (HTTP API, container, CI, multi-tenant overlays, API-key auth, structured logging, audit log, Prometheus metrics) have shipped.
 
 ```
                   04 JSON output
                        │
             ┌──────────┴──────────┐
             ▼                     ▼
-       05 XML/BaseX          06 adjudication
+       05 XML/BaseX          06 adjudis-core
        (retrieval)           (decision + citations)
-                             ├── CLI (stdin → stdout)
-                             ├── Author CLI (validate/diff/shadow)
-                             └── HTTP API (Reitit + Jetty;
-                                 deployed via Dockerfile)
+                             │
+                             ├── CLI         (stdin JSON → stdout decision JSON)
+                             ├── Author CLI  (validate, dry-run, diff, shadow)
+                             ├── HTTP API    (Reitit + ring-jetty, packaged as
+                             │                a multi-stage Dockerfile)
+                             │   ├── auth    (X-API-Key → tenant)
+                             │   ├── tenants (per-tenant catalog overlay)
+                             │   └── obs     (JSON logs, audit log,
+                             │                X-Request-Id, /metrics)
+                             └── Build       (tools.build uberjar)
 ```
 
 ---
@@ -135,6 +143,23 @@ The JSON schema is [`NormalizedClaim`](../04-clojure-edi-transform/src/edi/trans
 ### Seam 4: XML → BaseX
 
 BaseX `ADD` is idempotent on path. The XML must match the schema namespace `urn:x12:837d` for the XQueries to find it (every XQuery declares `c = "urn:x12:837d"` and queries through that prefix).
+
+### Seam 5: project 04 JSON → project 06 (adjudication)
+
+The same JSON shape that 05 turns into an XML document, project 06 consumes as an input to adjudication. Two consumption paths:
+
+- **CLI**: stdin JSONL → stdout decision JSONL. The shape is documented in [`06-adjudis-core/src/adjudis/schema.clj`](../06-adjudis-core/src/adjudis/schema.clj).
+- **HTTP** (`POST /adjudicate`): `{"claim": {...}, "member": {...}, "as-of": "YYYY-MM-DD"?}`. The `claim` field is the project-04 JSON shape; the `member` field is a small EDN-like map with subscriber id, DOB, and coverage dates.
+
+The decision shape — `{verdict, line-decisions, findings, rule-versions, ...}` — is also documented in `schema.clj`. Every fired rule's id, reason code, severity, and citation are in `:findings`, so the decision is reconstructable from `(claim + catalog + findings)`.
+
+### Seam 6: project 06 → external observers
+
+Three sinks for runtime data:
+
+- **stdout** — one structured JSON log line per event. Two streams: application logs and the `audit` logger. MDC propagates `request_id` and `tenant_id` onto every line.
+- **`/metrics`** — Prometheus exposition format. JVM defaults + HTTP latency histograms + adjudis-specific counters (auth attempts by outcome, adjudications by tenant+verdict, findings by category+severity).
+- **`X-Request-Id` response header** — honored if the client supplied one, otherwise generated; same id used as `request_id` in the logs.
 
 ---
 
@@ -201,6 +226,16 @@ One XML document = one ST/SE transaction. Alternatives considered:
 
 Per-transaction matches both the natural unit of adjudication and the natural unit of update.
 
+### Rule productions are code; rule instances are data (project 06)
+
+The Clara productions in [`06-adjudis-core/src/adjudis/rules.clj`](../06-adjudis-core/src/adjudis/rules.clj) define **categories** of rule (frequency limit, age-appropriate, pre-auth, eligibility, annual max, fee schedule). The specific rules ("D1110 limited to 2/year") live in EDN data files under `resources/rule-catalog/`. Adding a specific rule is a single map appended to a file; adding a category is a new production.
+
+This is the right shape because rule authors in production are clinical-admin staff, not engineers. The data path is what they edit; the code path is owned by engineering. The compose layer ([`tenants/apply-overlay`](../06-adjudis-core/src/adjudis/tenants.clj)) lets each tenant `:add`, `:override`, or `:remove` rules from the shipped base catalog without touching engineering code at all.
+
+### Tenant isolation by data flow, not trust (project 06)
+
+The Clara engine doesn't know about tenants. The HTTP handler computes the requesting tenant's effective catalog (`base ⊕ overlay`) and passes it as an argument to the engine. No shared mutable state. A regression that conflates two tenants' findings would show up in [`api_test/tenant-isolation-acme-rule-doesnt-leak-to-beta`](../06-adjudis-core/test/adjudis/api_test.clj).
+
 ---
 
 ## Module-level dependencies
@@ -230,13 +265,21 @@ Per-transaction matches both the natural unit of adjudication and the natural un
                        └────────┬─────────┘
                                 │ pipe (process boundary)
                                 ▼
-                       ┌──────────────────┐
-                       │   project 05     │  Python from-json.py
-                       │   docstore       │  BaseX ADD / XQuery
-                       └──────────────────┘
+                                │
+                          ┌─────┴──────┐
+                          ▼            ▼
+                       ┌──────────────────┐  ┌──────────────────┐
+                       │   project 05     │  │   project 06     │  parallel sink
+                       │   docstore       │  │   adjudis-core   │  consumes 04's
+                       │                  │  │                  │  JSON shape
+                       │ Python from-json │  │ Clara engine     │
+                       │ BaseX ADD / XQ   │  │ HTTP API         │
+                       └──────────────────┘  │ Multi-tenant     │
+                                             │ Observability    │
+                                             └──────────────────┘
 ```
 
-ASDF dependencies cross only inside the CL boundary (02 → 03). Beyond that the components communicate by IPC over text streams — small, debuggable interfaces. You can run any stage in isolation, with a saved fixture as input.
+ASDF dependencies cross only inside the CL boundary (02 → 03). Beyond that the components communicate by IPC over text streams (or HTTP, in project 06's case) — small, debuggable interfaces. You can run any stage in isolation, with a saved fixture as input.
 
 ---
 
@@ -254,18 +297,26 @@ Where each component falls over and how it tells you about it.
 | 04 transform | Malli schema fails | Logged to stderr, JSON still emitted (deliberately permissive — downstream can quarantine) |
 | 04 transform | Bad EDN on stdin | Clojure `clojure.edn` error, exits non-zero |
 | 05 BaseX | Missing namespace prefix in XML | Query returns empty — silent. The loader script should validate before `ADD`. |
+| 06 HTTP API | Missing/bad `X-API-Key` (multi-tenant mode) | 401 with `{"error":"unauthorized"}`; `auth_failed` audit-log entry |
+| 06 HTTP API | Missing required body field on `/adjudicate` | 400 with `{"error":"validation","details":{"missing":[...]}}` |
+| 06 HTTP API | Unknown route | 404 (Reitit default) |
+| 06 engine | Unknown rule category | Catalog rule passes schema check at load (categories enumerated in `author.clj`); a previously-unseen category is caught by the rule-author CLI's `validate` |
+| 06 engine | Catalog entry malformed | `(author/validate-catalog)` enumerates missing keys, unknown categories/severities, duplicate ids before deploy |
 
-The most insidious failure is the last one — a namespace typo in XML produces empty query results, not an error. A production loader would add a post-ADD assertion (`count(collection("claims")/c:claim) > 0`).
+The most insidious failure (other than the BaseX namespace silence) is a rule that doesn't fire when the author expected it to. The shadow-mode CLI catches this: run the claim through the proposed catalog AND the current catalog and inspect the delta before promoting.
 
 ---
 
 ## What's deliberately NOT here
 
-- **No 837P, 837I, 835, 270/271, 276/277.** Scope limit. Adding 835 (remittance) is documented in [`02-x12-parser/README.md`](../02-x12-parser/README.md) as a stretch.
-- **No streaming parse.** v2.
-- **No authentication / authorization.** The pipeline is a unix-style filter — auth lives at the boundary (clearinghouse SFTP, BaseX REST endpoint), not in the components.
-- **No retry / dead-letter queue.** The pipeline is push-from-stdin, push-to-stdout; retry is the caller's problem. Productionizing this design would put the queue at the seams (see [deployment.md](deployment.md)).
-- **No PHI scrubbing utilities.** Fixtures are synthetic and obviously fake. Real claim data must never touch this repo — the `.gitignore` enforces this with `samples/*.edi`.
+- **No 837P, 837I, 835, 270/271, 276/277 in the parser.** Scope limit. Adding 835 (remittance) is documented in [`02-x12-parser/README.md`](../02-x12-parser/README.md) as a stretch.
+- **No streaming parse in project 02.** v2.
+- **No auth in the data pipeline (projects 02 → 05).** The pipeline is a unix-style filter — auth there would live at the ingest boundary (clearinghouse SFTP, BaseX REST). Project 06's HTTP API does have auth (X-API-Key); it's a different shape of component.
+- **No retry / dead-letter queue in the pipeline.** The pipeline is push-from-stdin, push-to-stdout; retry is the caller's problem. Productionizing this design would put the queue at the seams (see [deployment.md](deployment.md)).
+- **No PHI scrubbing utilities.** Fixtures are synthetic and obviously fake. Real claim data must never touch this repo — the `.gitignore` enforces this with `samples/*.edi`. The logging story in project 06 explicitly excludes PHI from log payloads (only ids and structural facts).
+- **No RBAC inside a tenant (project 06).** API keys identify tenants, not users. An analyst-vs-admin distinction inside one tenant is Phase 3.B in [`adjudis-plan.md`](adjudis-plan.md).
+- **No XTDB-backed bitemporal storage yet.** The history store uses an atom; the protocol is XTDB-swappable when ready.
+- **No OpenTelemetry traces.** Sketched in [`monitoring.md`](monitoring.md); structured logs + correlation IDs are the current substitute.
 
 ---
 
